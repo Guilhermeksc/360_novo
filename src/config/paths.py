@@ -20,9 +20,15 @@ DATA_DISPENSA_ELETRONICA_PATH = DISPENSA_ELETRONICA_DIR / "controle_contratacao_
 LICITACAO_DIR = MODULES_DIR / "planejamento"
 DATA_LICITACAO_PATH = LICITACAO_DIR / "controle_licitacao.db"
 
-
 ATAS_DIR = MODULES_DIR / "atas_novo"
 DATA_ATAS_PATH = ATAS_DIR / "controle_atas.db"
+
+BASE_DIR
+
+CONTRATOS_DIR = MODULES_DIR / "contratos"
+JSON_CONTRATOS_DIR = CONTRATOS_DIR / "json"
+DATA_CONTRATOS_PATH = CONTRATOS_DIR / "controle_contratos.db"
+
 
 CONTROLE_DADOS = DATABASE_DIR / "controle_dados.db"
 CONTROLE_CONTRATOS_DADOS = DATABASE_DIR / "controle_contrato.db"

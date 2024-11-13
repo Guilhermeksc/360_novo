@@ -48,7 +48,7 @@ class GerarAtasView(QMainWindow):
         self.instrucoes_widget = QLabel("Conteúdo das Instruções")
         self.content_area.addWidget(self.instrucoes_widget)
 
-        self.tr_widget = TermoReferenciaWidget(parent=self, icons=self.icons)
+        self.tr_widget = TermoReferenciaWidget(self, self.icons)
 
         self.content_area.addWidget(self.tr_widget)
 
@@ -91,6 +91,11 @@ class GerarAtasView(QMainWindow):
         return button_layout
 
     def configurar_visualizacao_tabela_tr(self, table_view):
+        # Verifica se o modelo foi configurado antes de prosseguir
+        if table_view.model() is None:
+            print("O modelo de dados não foi configurado para table_view.")
+            return  # Sai da função se o modelo não estiver configurado
+
         # Define colunas visíveis
         visible_columns = [1, 2, 3, 4]
         for col in range(table_view.model().columnCount()):

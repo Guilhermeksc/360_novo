@@ -1,8 +1,9 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
-from src.config.paths import STYLE_PATH, ICONS_DIR, IMAGES_DIR, DATA_DISPENSA_ELETRONICA_PATH, DATA_LICITACAO_PATH, DATA_ATAS_PATH
+from src.config.paths import DATA_CONTRATOS_PATH, ICONS_DIR, IMAGES_DIR, DATA_DISPENSA_ELETRONICA_PATH, DATA_LICITACAO_PATH, DATA_ATAS_PATH
 from src.config.styles.styless import get_menu_button_style, get_menu_button_activated_style
+from src.config.config_widget import ConfigManager
 from src.modules.widgets import *
 from src.config.dialogs import * 
 
@@ -200,8 +201,23 @@ class MainWindow(QMainWindow):
         self.set_active_button(self.buttons["ata"])
 
     def show_contratos(self):
-        pass
-        # self.content_stack.setCurrentWidget(self.contratos_widget)
+        self.clear_content_area()
+        
+        # Instancia o modelo de Dispensa Eletrônica com o caminho do banco de dados
+        self.contratos_model = ContratosModel(DATA_CONTRATOS_PATH)
+        
+        # Configura o modelo SQL
+        sql_model = self.contratos_model.setup_model("controle_licitacao", editable=True)
+        
+        # Cria o widget de Dispensa Eletrônica e passa o modelo SQL e o caminho do banco de dados
+        self.contratos_widget = ContratosView(self.icons, sql_model, self.contratos_model.database_contratos_manager.db_path)
+
+        # Cria o controlador e passa o widget e o modelo
+        self.contratos_controller = ContratosController(self.icons, self.contratos_widget, self.contratos_model)
+
+        # Adiciona o widget de Dispensa Eletrônica na área de conteúdo
+        self.content_layout.addWidget(self.contratos_widget)
+        self.set_active_button(self.buttons["contract"])
 
     def show_planejamento(self):
         self.clear_content_area()
@@ -234,84 +250,12 @@ class MainWindow(QMainWindow):
         self.set_active_button(self.buttons["dash"])
 
     def show_config(self):
-        """Configura o layout de configuração com um menu lateral."""
-        # Limpa a área de conteúdo antes de adicionar novos widgets
+        """Exibe a área de configurações usando o ConfigManager."""
         self.clear_content_area()
-        
-        # Configura a área principal com um layout horizontal
-        main_layout = QHBoxLayout()
-        main_layout.setSpacing(0)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Cria o menu lateral com as opções de configuração
-        menu_layout = QVBoxLayout()
-        menu_layout.setContentsMargins(0, 0, 0, 0)
-        menu_layout.setSpacing(0)
-        
-        # Define estilo padrão, hover e selecionado para os botões
-        button_style = """
-            QPushButton {
-                border: none;
-                color: white;
-                font-size: 16px; 
-                text-align: center;
-                padding: 15px;
-            }
-            QPushButton:hover {
-                background-color: #3A3B47; 
-            }
-            QPushButton:checked {
-                background-color: #202124; 
-                font-weight: bold;
-            }
-        """
-
-        # Cria os botões para o menu lateral com texto e ações correspondentes
-        buttons = [
-            ("Agentes Responsáveis", self.show_agentes_responsaveis_dialog),
-            ("Organizações Militares", self.show_organizacoes_dialog),
-            ("Setores Requisitantes", self.show_setores_requisitantes_dialog),
-            ("Modelos de Documentos", self.show_templates_dialog),
-            ("Database", self.show_configurar_database_dialog),
-        ]
-        
-        # Armazena os botões para gerenciar o estado selecionado
-        self.config_menu_buttons = []
-
-        for text, callback in buttons:
-            button = QPushButton(text)
-            button.setCheckable(True)
-            button.setStyleSheet(button_style)
-            button.setCursor(Qt.CursorShape.PointingHandCursor)
-            button.clicked.connect(callback)
-            button.clicked.connect(lambda _, b=button: self.set_selected_button(b))
-            
-            menu_layout.addWidget(button)
-            self.config_menu_buttons.append(button)
-
-        # Adiciona um espaçador ao final para empurrar os botões para baixo
-        spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-        menu_layout.addItem(spacer)
-
-        # Cria um widget para o menu lateral e aplica o layout
-        menu_widget = QWidget()
-        menu_widget.setLayout(menu_layout)
-        menu_widget.setStyleSheet("background-color: #181928;")  # Cor de fundo do menu lateral
-
-        # Adiciona o menu lateral ao layout principal
-        main_layout.addWidget(menu_widget, stretch=1)
-        
-        # Adiciona um espaço para a área de conteúdo
-        content_widget = QWidget()
-        content_widget.setStyleSheet("background-color: #13141F;")  # Cor de fundo da área de conteúdo
-        main_layout.addWidget(content_widget, stretch=3)
-
-        # Define o layout para a `config_widget` e adiciona ao `content_stack`
-        self.config_widget = QWidget()
-        self.config_widget.setLayout(main_layout)
-        self.content_layout.addWidget(self.config_widget)       
-        # Define o botão "config" como ativo
+        self.config_widget = ConfigManager(self.icons, self)
+        self.content_layout.addWidget(self.config_widget)
         self.set_active_button(self.buttons["config"])
+
 
     def set_selected_button(self, selected_button):
         """Define o botão selecionado no menu lateral."""

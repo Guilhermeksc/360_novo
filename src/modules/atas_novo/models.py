@@ -50,7 +50,7 @@ class GerarAtasModel(QObject):
         if not query.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='controle_ata'"):
             print("Erro ao verificar existência da tabela:", query.lastError().text())
         if not query.next():
-            print("Tabela 'controle_dispensas' não existe. Criando tabela...")
+            print("Tabela 'controle_' não existe. Criando tabela...")
             self.create_table_if_not_exists()
         else:
             pass
@@ -90,52 +90,12 @@ class GerarAtasModel(QObject):
                 municipio TEXT,
                 telefone TEXT,
                 email TEXT,
-                responsavel_legal TEXT,
-        ]          
+                responsavel_legal TEXT
             )
         """):
             print("Falha ao criar a tabela 'controle_atas':", query.lastError().text())
         else:
             print("Tabela 'controle_atas' criada com sucesso.")
-
-    def abrir_tabela_nova(self):
-        # Define o caminho do arquivo Excel
-        file_path = os.path.join(os.getcwd(), "tabela_nova.xlsx")
-        
-        # Cria um DataFrame vazio com as colunas especificadas
-        df = pd.DataFrame(columns=["item", "catalogo", "descricao", "descricao_detalhada"])
-        
-        # Salva o DataFrame no arquivo Excel
-        df.to_excel(file_path, index=False)
-
-        # Abre o arquivo Excel após a criação (opcional)
-        os.startfile(file_path)
-
-    def carregar_tabela(self): 
-        try:
-            caminho_arquivo, _ = QFileDialog.getOpenFileName(None, "Carregar Tabela", "", "Arquivos Excel (*.xlsx);;Todos os Arquivos (*)")
-            if not caminho_arquivo:
-                return None  # Se o usuário cancelar o diálogo, saia da função
-
-            # Carregar o arquivo Excel, filtrando apenas as colunas desejadas
-            tabela = pd.read_excel(caminho_arquivo, usecols=['item', 'catalogo', 'descricao', 'descricao_detalhada'])
-            
-            # Inserir os dados no banco de dados
-            self.inserir_dados_no_banco(tabela)
-            
-            # Emite o sinal indicando que a tabela foi carregada
-            self.tabelaCarregada.emit()
-
-        except Exception as e:
-            print(f"Erro ao carregar a tabela: {e}")
-            QMessageBox.critical(None, "Erro", f"Erro ao carregar a tabela: {e}")
-
-    def inserir_dados_no_banco(self, tabela: pd.DataFrame):
-        try:
-            self.database_manager.save_dataframe(tabela, "controle_atas")
-            print("Dados inseridos no banco com sucesso.")
-        except Exception as e:
-            print(f"Erro ao inserir dados no banco: {e}")
 
     def obter_sql_model(self):
         # Configura e retorna o modelo SQL para a tabela "controle_atas"
@@ -174,6 +134,45 @@ class CustomSqlTableModel(QSqlTableModel):
     def obter_sql_model(self):
         pass
 
+    def carregar_tabela(self): 
+        try:
+            caminho_arquivo, _ = QFileDialog.getOpenFileName(None, "Carregar Tabela", "", "Arquivos Excel (*.xlsx);;Todos os Arquivos (*)")
+            if not caminho_arquivo:
+                return None  # Se o usuário cancelar o diálogo, saia da função
+
+            # Carregar o arquivo Excel, filtrando apenas as colunas desejadas
+            tabela = pd.read_excel(caminho_arquivo, usecols=['item', 'catalogo', 'descricao', 'descricao_detalhada'])
+            
+            # Inserir os dados no banco de dados
+            self.inserir_dados_no_banco(tabela)
+            
+            # Emite o sinal indicando que a tabela foi carregada
+            self.tabelaCarregada.emit()
+
+        except Exception as e:
+            print(f"Erro ao carregar a tabela: {e}")
+            QMessageBox.critical(None, "Erro", f"Erro ao carregar a tabela: {e}")
+
+    def abrir_tabela_nova(self):
+        # Define o caminho do arquivo Excel
+        file_path = os.path.join(os.getcwd(), "tabela_nova.xlsx")
+        
+        # Cria um DataFrame vazio com as colunas especificadas
+        df = pd.DataFrame(columns=["item", "catalogo", "descricao", "descricao_detalhada"])
+        
+        # Salva o DataFrame no arquivo Excel
+        df.to_excel(file_path, index=False)
+
+        # Abre o arquivo Excel após a criação (opcional)
+        os.startfile(file_path)
+
+    def inserir_dados_no_banco(self, tabela: pd.DataFrame):
+        try:
+            self.database_manager.save_dataframe(tabela, "controle_atas")
+            print("Dados inseridos no banco com sucesso.")
+        except Exception as e:
+            print(f"Erro ao inserir dados no banco: {e}")
+            
 class SqlModel:
     def __init__(self, icons_dir, database_manager, parent=None):
         self.icons_dir = icons_dir

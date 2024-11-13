@@ -25,6 +25,7 @@ def load_icon(icon_name):
 # Funções específicas para carregar ícones usados frequentemente
 def load_icons():
     return {
+        "synchronize": load_icon("synchronize.png"),
         "brasil": load_icon("brasil.png"),
         "arquivo": load_icon("arquivo.png"),
         "api": load_icon("api.png"),
@@ -101,4 +102,9 @@ def load_icons():
         "confirm_green": load_icon("confirm_green.png"),
         "checked": load_icon("checked.png"),
         "test": load_icon("testing.png"),
+        "excel_down": load_icon("excel_down.png"),
+        "excel_up": load_icon("excel_up.png"),
+        "mensagem": load_icon("mensagem.png"),
+        "time": load_icon("time.png"),
+        "directory": load_icon("directory.png"),
                 }
