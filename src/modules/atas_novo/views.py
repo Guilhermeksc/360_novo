@@ -12,6 +12,7 @@ class GerarAtasView(QMainWindow):
     atasSignal = pyqtSignal()
     indicadoresSignal = pyqtSignal()
 
+
     def __init__(self, icons, model, database_path, parent=None):
         super().__init__(parent)
         self.icons = icons

@@ -24,7 +24,7 @@ class GerarAtasController(QObject):
         self.view.tr_widget.configurarSqlModelSignal.connect(self.configurar_sql_model)
 
         # Conecta o sinal de carregar tabela ao método do modelo
-        self.view.tr_widget.carregarTabela.connect(self.model.carregar_tabela)
+        self.view.tr_widget.carregarTabela.connect(self.caregar_tabela_com_dados)
         
         # Conecta o sinal `tabelaCarregada` para configurar o modelo SQL após carregar a tabela
         self.model.tabelaCarregada.connect(self.configurar_sql_model)
@@ -39,6 +39,9 @@ class GerarAtasController(QObject):
         # Lógica para abrir uma nova tabela
         self.model.abrir_tabela_nova()
 
+    def caregar_tabela_com_dados(self):
+        # Lógica para abrir uma nova tabela
+        self.model.carregar_tabela()
         
     def instrucoes(self):
         # Atualiza para o widget de instruções

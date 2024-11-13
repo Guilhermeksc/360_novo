@@ -214,7 +214,6 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
     border: 1px solid #3C3C5A;
     width: 15px;
     height: 15px;
-    /* subcontrol-origin: margin; */
 }
 
 /* Efeito ao passar o mouse sobre as setas */
@@ -223,7 +222,7 @@ QScrollBar::add-line:horizontal:hover, QScrollBar::sub-line:horizontal:hover {
     background-color: #222236;
 }
 
-Remover setas quando não são necessárias
+/* Remover setas quando não são necessárias */
 QScrollBar::add-line:vertical:disabled, QScrollBar::sub-line:vertical:disabled,
 QScrollBar::add-line:horizontal:disabled, QScrollBar::sub-line:horizontal:disabled {
     background: none;

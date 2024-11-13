@@ -142,6 +142,8 @@ class GerarAtasModel(QObject):
         return self.sql_model_manager.setup_model("controle_atas", editable=True)
 
 class CustomSqlTableModel(QSqlTableModel):
+    tabelaCarregada = pyqtSignal() 
+
     def __init__(self, parent=None, db=None, database_manager=None, non_editable_columns=None):
         super().__init__(parent, db)
         self.database_manager = database_manager
