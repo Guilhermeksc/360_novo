@@ -109,5 +109,7 @@ def load_icons():
         "directory": load_icon("directory.png"),
         "check": load_icon("check.png"),
         "processing": load_icon("processing.png"),
+        "page": load_icon("page.png"),
+        "stats": load_icon("stats.png"),
 
                 }

@@ -79,10 +79,10 @@ CEIMBRA_BG = IMAGE_PATH / "ceimbra_bg.png"
 
 # Diretórios de templates
 TEMPLATE_DIR = RESOURCES_DIR / "template"
+TEMPLATE_PATH = TEMPLATE_DIR / 'template_ata.docx'
 CP_DIR = TEMPLATE_DIR / "comunicacao_padronizada" 
 TEMPLATE_CHECKLIST = TEMPLATE_DIR / "checklist.docx"
 TEMPLATE_AUTUACAO = TEMPLATE_DIR / "template_autuacao.docx"
-TEMPLATE_PATH = TEMPLATE_DIR / 'template_ata.docx'
 
 # Diretórios de mensagens
 MSG_DIR = RESOURCES_DIR / "msg"

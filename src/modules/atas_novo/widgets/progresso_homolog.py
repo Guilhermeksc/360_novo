@@ -32,6 +32,8 @@ class ConclusaoDialog(QDialog):
         self.setLayout(main_layout)
 
 class ProcessamentoWidget(QWidget):
+    resultadosHomologacao = pyqtSignal(object)
+    
     def __init__(self, pdf_dir, icons, model, database_ata_manager, main_window, parent=None):
         super().__init__(parent)
         self.pdf_dir = pdf_dir
@@ -156,82 +158,109 @@ class ProcessamentoWidget(QWidget):
         # Atualiza o botão de registro SICAF
         self.update_registro_sicaf_button()
 
-    def atualizar_ou_inserir_controle_homologacao(self):
+    def atualizar_ou_inserir_controle_homologacao(self): 
         if self.homologacao_dataframe is None or self.homologacao_dataframe.empty:
             print("DataFrame de homologação está vazio ou não foi criado.")
             return
 
-        # 1. Criação da tabela 'controle_homologacao' se não existir
+        unique_combinations = self.homologacao_dataframe[['uasg', 'num_pregao', 'ano_pregao']].dropna().drop_duplicates()
+
+        if unique_combinations.empty:
+            print("Não há combinações válidas de UASG e número do pregão.")
+            return
+
+        if len(unique_combinations) > 1:
+            combinations = unique_combinations.apply(lambda row: f"{row['uasg']}-{row['num_pregao']}-{row['ano_pregao']}", axis=1)
+            QMessageBox.warning(None, "Cominações Múltiplas Encontradas",
+                                f"As seguintes combinações únicas foram encontradas:\n" + "\n".join(combinations))
+            return
+
+        uasg, num_pregao, ano_pregao = unique_combinations.iloc[0]
+        table_name = f"result_{uasg}_{num_pregao}_{ano_pregao}"
+
+        # Deleta a tabela caso já exista e cria uma nova
+        if not self.recriar_tabela(table_name):
+            return
+
+        # Copia os dados da tabela 'controle_atas' para a nova tabela
+        if not self.copiar_dados_controle_atas(table_name):
+            return
+
+        # Processa o DataFrame para inserção ou atualização dos dados
+        self.processar_linhas_dataframe(table_name)
+        print(f"Dados do DataFrame inseridos/atualizados na tabela '{table_name}' com sucesso.")
+
+    def recriar_tabela(self, table_name):
+        delete_table_query = QSqlQuery(self.model.database())
+        if not delete_table_query.exec(f"DROP TABLE IF EXISTS {table_name}"):
+            print(f"Erro ao deletar a tabela '{table_name}':", delete_table_query.lastError().text())
+            return False
+
         create_table_query = QSqlQuery(self.model.database())
-        if not create_table_query.exec("""
-            CREATE TABLE IF NOT EXISTS controle_homologacao AS
+        if not create_table_query.exec(f"""
+            CREATE TABLE {table_name} AS
             SELECT * FROM controle_atas WHERE 1=0
         """):
-            print("Erro ao criar a tabela 'controle_homologacao':", create_table_query.lastError().text())
-            return
+            print(f"Erro ao criar a tabela '{table_name}':", create_table_query.lastError().text())
+            return False
+        return True
 
-        # 2. Copia os dados de 'catalogo', 'descricao' e 'descricao_detalhada' de 'controle_atas' para 'controle_homologacao'
+    def copiar_dados_controle_atas(self, table_name):
         copy_query = QSqlQuery(self.model.database())
-        if not copy_query.exec("""
-            INSERT INTO controle_homologacao (item, catalogo, descricao, descricao_detalhada)
+        if not copy_query.exec(f"""
+            INSERT INTO {table_name} (item, catalogo, descricao, descricao_detalhada)
             SELECT item, catalogo, descricao, descricao_detalhada FROM controle_atas
         """):
-            print("Erro ao copiar colunas específicas para 'controle_homologacao':", copy_query.lastError().text())
-            return
+            print(f"Erro ao copiar colunas específicas para '{table_name}':", copy_query.lastError().text())
+            return False
+        return True
 
-        # 3. Para cada linha no DataFrame, insere ou atualiza conforme necessário
+    def processar_linhas_dataframe(self, table_name):
         for _, row in self.homologacao_dataframe.iterrows():
             item_value = row['item']
-
-            # Verifica se o item já existe na tabela 'controle_homologacao'
-            check_query = QSqlQuery(self.model.database())
-            check_query.prepare("SELECT COUNT(*) FROM controle_homologacao WHERE item = :item")
-            check_query.bindValue(":item", item_value)
-            if not check_query.exec():
-                print(f"Erro ao verificar existência do item {item_value}:", check_query.lastError().text())
-                continue
-            check_query.next()
-            item_exists = check_query.value(0) > 0
-
-            if item_exists:
-                # Atualiza a linha existente para o 'item', preservando 'catalogo', 'descricao', 'descricao_detalhada'
-                update_query = QSqlQuery(self.model.database())
-                update_fields = ", ".join([
-                    f"{col} = :{col}" for col in self.homologacao_dataframe.columns 
-                    if col not in ["item", "catalogo", "descricao", "descricao_detalhada"]
-                ])
-                update_query.prepare(f"UPDATE controle_homologacao SET {update_fields} WHERE item = :item")
-
-                for col in self.homologacao_dataframe.columns:
-                    if col not in ["catalogo", "descricao", "descricao_detalhada"]:
-                        update_query.bindValue(f":{col}", row[col])
-
-                update_query.bindValue(":item", item_value)  # Bind para a cláusula WHERE
-                if not update_query.exec():
-                    print(f"Erro ao atualizar o item {item_value} em 'controle_homologacao':", update_query.lastError().text())
+            if self.verificar_existencia_item(table_name, item_value):
+                # Atualiza os valores nas colunas existentes para o 'item'
+                self.atualizar_item_existente(table_name, item_value, row)
             else:
-                # Insere uma nova linha para o 'item', incluindo todas as colunas do DataFrame
-                columns = ", ".join(self.homologacao_dataframe.columns)
-                placeholders = ", ".join([f":{col}" for col in self.homologacao_dataframe.columns])
-                insert_query = QSqlQuery(self.model.database())
-                insert_query.prepare(f"INSERT INTO controle_homologacao ({columns}) VALUES ({placeholders})")
+                # Insere um novo 'item' caso não exista
+                self.inserir_novo_item(table_name, row)
 
-                for col in self.homologacao_dataframe.columns:
-                    insert_query.bindValue(f":{col}", row[col])
+    def verificar_existencia_item(self, table_name, item_value):
+        check_query = QSqlQuery(self.model.database())
+        check_query.prepare(f"SELECT COUNT(*) FROM {table_name} WHERE item = :item")
+        check_query.bindValue(":item", item_value)
+        if not check_query.exec():
+            print(f"Erro ao verificar existência do item {item_value}:", check_query.lastError().text())
+            return False
+        check_query.next()
+        return check_query.value(0) > 0
 
-                if not insert_query.exec():
-                    print(f"Erro ao inserir o item {item_value} em 'controle_homologacao':", insert_query.lastError().text())
+    def atualizar_item_existente(self, table_name, item_value, row):
+        update_query = QSqlQuery(self.model.database())
+        update_fields = ", ".join([f"{col} = :{col}" for col in self.homologacao_dataframe.columns 
+                                if col not in ["item", "catalogo", "descricao", "descricao_detalhada"]])
+        update_query.prepare(f"UPDATE {table_name} SET {update_fields} WHERE item = :item")
 
-        print("Dados do DataFrame inseridos/atualizados na tabela 'controle_homologacao' com sucesso.")
+        for col in self.homologacao_dataframe.columns:
+            if col not in ["catalogo", "descricao", "descricao_detalhada"]:
+                update_query.bindValue(f":{col}", row[col])
 
+        update_query.bindValue(":item", item_value)
+        if not update_query.exec():
+            print(f"Erro ao atualizar o item {item_value} em '{table_name}':", update_query.lastError().text())
 
+    def inserir_novo_item(self, table_name, row):
+        columns = ", ".join(self.homologacao_dataframe.columns)
+        placeholders = ", ".join([f":{col}" for col in self.homologacao_dataframe.columns])
+        insert_query = QSqlQuery(self.model.database())
+        insert_query.prepare(f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})")
 
-    def encontrar_linha_do_item(self, item_value):
-        for row in range(self.model.rowCount()):
-            item_index = self.model.index(row, self.model.fieldIndex("item"))
-            if self.model.data(item_index) == item_value:
-                return row
-        return None
+        for col in self.homologacao_dataframe.columns:
+            insert_query.bindValue(f":{col}", row[col])
+
+        if not insert_query.exec():
+            print(f"Erro ao inserir o item {row['item']} em '{table_name}':", insert_query.lastError().text())
+
 
     def save_data(self, table_name):
         if isinstance(self.current_dataframe, pd.DataFrame) and not self.current_dataframe.empty:
@@ -603,7 +632,7 @@ class RegistroSICAFDialog(QDialog):
         try:
             query = "SELECT 1 FROM registro_sicaf WHERE cnpj = ?"
             result = self.database_ata_manager.execute_query(query, (cnpj,))  # Usa db_manager para a consulta
-            return self.icon_cache["confirm"] if result else self.icon_cache["cancel"]
+            return self.icon_cache["check"] if result else self.icon_cache["cancel"]
         except Exception as e:
             QMessageBox.critical(self, "Erro no Banco de Dados", f"Carregamento SICAF: Erro ao acessar o banco de dados: {e}")
             return self.icon_cache["cancel"]  # Ícone padrão em caso de erro
@@ -612,7 +641,7 @@ class RegistroSICAFDialog(QDialog):
         """Carrega ícones e os armazena em cache."""
         icon_cache = {}
         icon_paths = {
-            "confirm": self.icons_dir / "confirm.png",
+            "check": self.icons_dir / "check.png",
             "cancel": self.icons_dir / "cancel.png"
         }
 
@@ -669,7 +698,7 @@ padrao_4 = (
 )
 
 padrao_3 = (
-    r"Adjucado\s+e\s+Homologado\s+por\s+CPF\s+(?P<cpf_od>\*\*\*.\d{3}.\*\*\*-\*\d{1})\s+-\s+"
+    r"(Adjucado|Adjudicado)\s+e\s+Homologado\s+por\s+CPF\s+(?P<cpf_od>\*\*\*.\d{3}.\*\*\*-\*\d{1})\s+-\s+"
     r"(?P<ordenador_despesa>[^\d,]+?)\s+para\s+"
     r"(?P<empresa>.*?)(?=\s*,\s*CNPJ\s+)"  # Captura o nome da empresa até a próxima vírgula e "CNPJ"
     r"\s*,\s*CNPJ\s+(?P<cnpj>\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}),\s+"
@@ -677,7 +706,6 @@ padrao_3 = (
     r"(?:,\s+valor\s+negociado\s*:\s*R\$\s*(?P<valor_negociado>[\d,.]+))?\s+"  # Captura opcional de "valor negociado"
     r"Propostas\s+do\s+Item"  # Finaliza a captura em "Propostas do Item"
 )
-
 
 def processar_item(match, conteudo: str, ultima_posicao_processada: int, padrao_3: str, padrao_4: str) -> dict:
     item = match.groupdict()

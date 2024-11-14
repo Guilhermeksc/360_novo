@@ -4,6 +4,7 @@ from PyQt6.QtCore import *
 from src.modules.utils.add_button import add_button
 from src.modules.atas_novo.widgets.importar_tr import TermoReferenciaWidget
 from src.modules.atas_novo.widgets.progresso_homolog import ProcessamentoWidget
+from src.modules.atas_novo.widgets.atas import GerarAtaWidget
 from pathlib import Path
 from src.config.paths import PDF_DIR
 from src.modules.atas_novo.database_manager.db_manager import DatabaseATASManager
@@ -69,7 +70,10 @@ class GerarAtasView(QMainWindow):
         self.api_widget = QLabel("Conteúdo de Consulta API")
         self.content_area.addWidget(self.api_widget)
 
-        self.atas_widget = QLabel("Conteúdo de Geração de Ata")
+        self.atas_widget = GerarAtaWidget(
+            icons=self.icons, 
+            database_ata_manager=self.database_ata_manager, 
+            main_window=self)
         self.content_area.addWidget(self.atas_widget)
 
         self.indicadores_widget = QLabel("Conteúdo dos Indicadores")
@@ -91,11 +95,11 @@ class GerarAtasView(QMainWindow):
 
         # Cria cada botão individualmente chamando a função `add_button`
         add_button("Instruções", "arquivo", self.instrucoesSignal, button_layout, self.icons, "Clique para ver instruções")
-        add_button("Termo de Referência", "api", self.trSignal, button_layout, self.icons, "Acessar Termo de Referência")
-        add_button("Termo de Homologação", "api", self.homologSignal, button_layout, self.icons, "Acessar Termo de Homologação")
+        add_button("Termo de Referência", "stats", self.trSignal, button_layout, self.icons, "Acessar Termo de Referência")
+        add_button("Termo de Homologação", "page", self.homologSignal, button_layout, self.icons, "Acessar Termo de Homologação")
         add_button("Consultar API", "api", self.apiSignal, button_layout, self.icons, "Consultar informações da API")
-        add_button("Gerar Ata", "api", self.atasSignal, button_layout, self.icons, "Gerar nova ata")
-        add_button("Indicadores", "api", self.indicadoresSignal, button_layout, self.icons, "Visualizar indicadores")
+        add_button("Gerar Ata", "template", self.atasSignal, button_layout, self.icons, "Gerar nova ata")
+        add_button("Indicadores", "performance", self.indicadoresSignal, button_layout, self.icons, "Visualizar indicadores")
 
         # Adiciona um espaçamento no final para ajustar o layout
         button_layout.addStretch()

@@ -4,6 +4,8 @@ import json
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATABASE_DIR = BASE_DIR / "database"
 CONFIG_FILE = BASE_DIR / "config.json"
+PRE_DEFINICOES_JSON = BASE_DIR / "pre_definicioes.json"
+
 STYLE_PATH = BASE_DIR / "style.css" 
 
 # Resources
@@ -11,6 +13,9 @@ RESOURCES_DIR = BASE_DIR / "resources"
 TEMPLATE_DIR = RESOURCES_DIR / "templates"
 ICONS_DIR = RESOURCES_DIR / "icons"
 IMAGES_DIR = RESOURCES_DIR / "images"
+TEMPLATE_DIR = RESOURCES_DIR / "template"
+TEMPLATE_PATH = TEMPLATE_DIR / 'template_ata.docx'
+
 
 # Modules
 MODULES_DIR = BASE_DIR / "modules"

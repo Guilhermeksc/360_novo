@@ -184,17 +184,6 @@ class DatabaseManager:
             QMessageBox.warning(None, "Erro", f"Erro ao carregar a tabela '{table_name}': {e}")
             return None
         
-    def verificar_ou_criar_tabela(self):
-        query = """
-        CREATE TABLE IF NOT EXISTS pre_definicoes_gerar_atas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cidades_combobox TEXT,
-            org_combobox TEXT,
-            initial_text TEXT,
-            ordenador_despesas TEXT
-        )
-        """
-        self.execute_update(query)        
 
     def salvar_consulta_api_no_db(self, data_informacoes):
         # Função salva os dados no banco de dados, verificando se já existe uma entrada
