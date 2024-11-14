@@ -6,7 +6,7 @@ import json
 import requests
 import time
 from pathlib import Path
-from static.homologacao.progresso_homolog import TreeViewWindow
+from modules.atas_novo.widgets.progresso_homolog import TreeViewWindow
 
 class PNCPConsultaThread(QThread):
     consulta_concluida = pyqtSignal(list, list)

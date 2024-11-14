@@ -5,7 +5,7 @@ import pandas as pd
 
 class DatabaseATASManager:
     def __init__(self, db_path):
-        self.db_path = db_path
+        self.db_path = str(db_path)
         self.connection = None
 
     def set_database_path(self, db_path):
@@ -39,15 +39,26 @@ class DatabaseATASManager:
     def save_dataframe(self, df, table_name):
         conn = self.connect_to_database()
         try:
+            # Identifica itens duplicados na tabela e exclui-os
+            cursor = conn.cursor()
+            duplicados = df['item'].tolist()
+            placeholders = ', '.join('?' for _ in duplicados)
+            delete_query = f"DELETE FROM {table_name} WHERE item IN ({placeholders})"
+            cursor.execute(delete_query, duplicados)
+            
+            # Insere o novo DataFrame após excluir os duplicados
             df.to_sql(table_name, conn, if_exists='append', index=False)
             logging.info(f"DataFrame salvo na tabela {table_name}.")
+            
         except sqlite3.IntegrityError as e:
             valor_duplicado = df.loc[df.duplicated(subset=['item'], keep=False), 'item']
             mensagem_erro = f"Erro ao salvar o DataFrame: Valor duplicado(s) encontrado(s) na coluna 'item': {valor_duplicado.to_list()}."
             logging.error(mensagem_erro)
             QMessageBox.warning(None, "Erro de Duplicação", mensagem_erro)
+            
         except sqlite3.Error as e:
             logging.error(f"Erro ao salvar DataFrame: {e}")
+            
         finally:
             self.close_connection()
 

@@ -5,57 +5,44 @@ from PyQt6.QtCore import *
 import os
 import pandas as pd
 from PyQt6.QtSql import QSqlDatabase, QSqlTableModel, QSqlQuery
-
+import logging  
+import sqlite3
 class GerarAtasModel(QObject):
     tabelaCarregada = pyqtSignal() 
 
     def __init__(self, database_path, parent=None):
         super().__init__(parent)
         self.database_ata_manager = DatabaseATASManager(database_path)
-        self.sql_model_manager = SqlModel(icons_dir=None, database_manager=self.database_ata_manager)
-
-
         self.db = None  # Adiciona um atributo para o banco de dados
         self.model = None  # Atributo para o modelo SQL
         self.init_database()  # Inicializa a conexão e a estrutura do banco de dados
 
     def init_database(self):
-        """Inicializa a conexão com o banco de dados e ajusta a estrutura da tabela."""
         if QSqlDatabase.contains("my_conn"):
             QSqlDatabase.removeDatabase("my_conn")
+        
+        db_path = str(self.database_ata_manager.db_path)
         self.db = QSqlDatabase.addDatabase('QSQLITE', "my_conn")
-        self.db.setDatabaseName(str(self.database_ata_manager.db_path))
+        self.db.setDatabaseName(db_path)
         
         if not self.db.open():
             print("Não foi possível abrir a conexão com o banco de dados.")
         else:
             print("Conexão com o banco de dados aberta com sucesso.")
-            self.adjust_table_atas_structure()  # Ajusta a estrutura da tabela, se necessário
+            self.adjust_table_atas_structure()
+
 
     def setup_model(self, table_name, editable=False):
         """Configura o modelo SQL para a tabela especificada."""
-        # Passa o database_manager para o modelo personalizado
-        self.model = CustomSqlTableModel(parent=self, db=self.db, database_manager=self.database_ata_manager, non_editable_columns=[4, 8, 10, 13])
+        self.model = CustomSqlTableModel(
+            parent=self, db=self.db, database_manager=self.database_ata_manager, 
+            non_editable_columns=[4, 8, 10, 13], gerar_atas_model=self
+        )
         self.model.setTable(table_name)
-        
-        if editable:
-            self.model.setEditStrategy(QSqlTableModel.EditStrategy.OnFieldChange)
-        
+        self.model.setEditStrategy(QSqlTableModel.EditStrategy.OnFieldChange)
         self.model.select()
         return self.model
     
-    def adjust_table_atas_structure(self):
-        """Verifica e cria a tabela 'controle_dispensas' se não existir."""
-        query = QSqlQuery(self.db)
-        if not query.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='controle_ata'"):
-            print("Erro ao verificar existência da tabela:", query.lastError().text())
-        if not query.next():
-            print("Tabela 'controle_' não existe. Criando tabela...")
-            self.create_table_if_not_exists()
-        else:
-            pass
-            # print("Tabela 'controle_atas' existe. Verificando estrutura da coluna...")
-
     def create_table_if_not_exists(self):
         """Cria a tabela 'controle_dispensas' com a estrutura definida, caso ainda não exista."""
         query = QSqlQuery(self.db)
@@ -64,7 +51,8 @@ class GerarAtasModel(QObject):
                 grupo TEXT,                         
                 item TEXT PRIMARY KEY,
                 catalogo TEXT,
-                descrição TEXT,
+                descricao TEXT,
+                descricao_detalhada TEXT,
                 unidade TEXT,
                 quantidade TEXT,
                 valor_estimado TEXT,
@@ -74,7 +62,7 @@ class GerarAtasModel(QObject):
                 valor_homologado_total_item TEXT,
                 marca_fabricante TEXT,
                 modelo_versao TEXT,
-                situacao TEXT,descricao_detalhada TEXT,
+                situacao TEXT,
                 uasg TEXT,
                 orgao_responsavel TEXT,
                 num_pregao TEXT,ano_pregao TEXT,
@@ -84,31 +72,41 @@ class GerarAtasModel(QObject):
                 valor_negociado TEXT,
                 ordenador_despesa TEXT,
                 empresa TEXT,
-                cnpj TEXT,
-                endereco TEXT,
-                cep TEXT,
-                municipio TEXT,
-                telefone TEXT,
-                email TEXT,
-                responsavel_legal TEXT
+                cnpj TEXT
             )
         """):
             print("Falha ao criar a tabela 'controle_atas':", query.lastError().text())
         else:
             print("Tabela 'controle_atas' criada com sucesso.")
 
-    def obter_sql_model(self):
-        # Configura e retorna o modelo SQL para a tabela "controle_atas"
-        return self.sql_model_manager.setup_model("controle_atas", editable=True)
+    def adjust_table_atas_structure(self):
+        query = QSqlQuery(self.db)
+        if not query.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='controle_atas'"):
+            print("Erro ao verificar existência da tabela:", query.lastError().text())
+        if not query.next():
+            print("Tabela 'controle_atas' não existe. Criando tabela...")
+            self.create_table_if_not_exists()
+        else:
+            print("Tabela 'controle_atas' existe. Verificando estrutura da coluna...")
+
+    def configure_columns(self, table_view, visible_columns):
+        for column in range(self.model.columnCount()):
+            header = self.model.headerData(column, Qt.Orientation.Horizontal)
+            if column not in visible_columns:
+                table_view.hideColumn(column)
+            else:
+                self.model.setHeaderData(column, Qt.Orientation.Horizontal, header)
 
 class CustomSqlTableModel(QSqlTableModel):
     tabelaCarregada = pyqtSignal() 
 
-    def __init__(self, parent=None, db=None, database_manager=None, non_editable_columns=None):
+    def __init__(self, parent=None, db=None, database_manager=None, non_editable_columns=None, gerar_atas_model=None):
         super().__init__(parent, db)
         self.database_manager = database_manager
         self.non_editable_columns = non_editable_columns if non_editable_columns is not None else []
-        
+        self.gerar_atas_model = gerar_atas_model
+        self.connection = None
+
         # Define os nomes das colunas
         self.column_names = [
             'grupo', 'item', 'catalogo', 'descricao', 'unidade', 'quantidade', 'valor_estimado', 
@@ -116,7 +114,7 @@ class CustomSqlTableModel(QSqlTableModel):
             'valor_homologado_total_item', 'marca_fabricante', 'modelo_versao', 'situacao', 
             'descricao_detalhada', 'uasg', 'orgao_responsavel', 'num_pregao', 'ano_pregao', 
             'srp', 'objeto', 'melhor_lance', 'valor_negociado', 'ordenador_despesa', 'empresa', 
-            'cnpj', 'endereco', 'cep', 'municipio', 'telefone', 'email', 'responsavel_legal'
+            'cnpj'
         ]
 
     def flags(self, index):
@@ -130,28 +128,73 @@ class CustomSqlTableModel(QSqlTableModel):
             return super().data(index, role)
 
         return super().data(index, role)
+
+    def connect_to_database(self):
+        if self.connection is None:
+            self.connection = sqlite3.connect(self.database_manager.db_path)  # Corrige para o atributo correto
+            logging.info(f"Conexão com o banco de dados aberta em {self.database_manager.db_path}")
+        return self.connection
     
-    def obter_sql_model(self):
-        pass
+    def close_connection(self):
+        if self.connection:
+            logging.info("Fechando conexão com o banco de dados...")
+            self.connection.close()
+            self.connection = None
+            logging.info(f"Conexão com o banco de dados fechada em {self.database_manager}")
+
+    def execute_query(self, query, params=None):
+        conn = self.connect_to_database()
+        try:
+            cursor = conn.cursor()
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            conn.commit()
+            return cursor.fetchall()
+        except sqlite3.Error as e:
+            logging.error(f"Erro ao executar consulta: {query}, Erro: {e}")
+            return None
+        finally:
+            self.close_connection()
 
     def carregar_tabela(self): 
         try:
+            # Seleciona o arquivo para carregar
             caminho_arquivo, _ = QFileDialog.getOpenFileName(None, "Carregar Tabela", "", "Arquivos Excel (*.xlsx);;Todos os Arquivos (*)")
             if not caminho_arquivo:
-                return None  # Se o usuário cancelar o diálogo, saia da função
+                return None  # Se o usuário cancelar o diálogo, sai da função
 
-            # Carregar o arquivo Excel, filtrando apenas as colunas desejadas
+            # Carrega o arquivo Excel, filtrando apenas as colunas desejadas
             tabela = pd.read_excel(caminho_arquivo, usecols=['item', 'catalogo', 'descricao', 'descricao_detalhada'])
+
+            # Conecta ao banco de dados
+            conn = self.database_manager.connect_to_database()
+            cursor = conn.cursor()
+
+            # Exclui a tabela existente, se houver
+            cursor.execute("DROP TABLE IF EXISTS controle_atas")
+            conn.commit()
+            print("Tabela 'controle_atas' excluída com sucesso.")
+
+            # Recria a tabela usando o método do GerarAtasModel
+            if self.gerar_atas_model:
+                self.gerar_atas_model.create_table_if_not_exists()
             
-            # Inserir os dados no banco de dados
-            self.inserir_dados_no_banco(tabela)
-            
-            # Emite o sinal indicando que a tabela foi carregada
-            self.tabelaCarregada.emit()
+            # Insere os novos dados no banco de dados
+            tabela.to_sql("controle_atas", conn, if_exists='append', index=False)
+            print("Dados inseridos no banco com sucesso.")
+
+            # Atualiza o modelo para refletir as mudanças
+            self.select()  # Recarrega os dados do banco
+            self.tabelaCarregada.emit()  # Emite o sinal de que a tabela foi carregada
 
         except Exception as e:
             print(f"Erro ao carregar a tabela: {e}")
             QMessageBox.critical(None, "Erro", f"Erro ao carregar a tabela: {e}")
+
+        finally:
+            conn.close()
 
     def abrir_tabela_nova(self):
         # Define o caminho do arquivo Excel
@@ -160,72 +203,12 @@ class CustomSqlTableModel(QSqlTableModel):
         # Cria um DataFrame vazio com as colunas especificadas
         df = pd.DataFrame(columns=["item", "catalogo", "descricao", "descricao_detalhada"])
         
-        # Salva o DataFrame no arquivo Excel
-        df.to_excel(file_path, index=False)
-
-        # Abre o arquivo Excel após a criação (opcional)
-        os.startfile(file_path)
-
-    def inserir_dados_no_banco(self, tabela: pd.DataFrame):
         try:
-            self.database_manager.save_dataframe(tabela, "controle_atas")
-            print("Dados inseridos no banco com sucesso.")
-        except Exception as e:
-            print(f"Erro ao inserir dados no banco: {e}")
+            # Tenta salvar o DataFrame no arquivo Excel
+            df.to_excel(file_path, index=False)
             
-class SqlModel:
-    def __init__(self, icons_dir, database_manager, parent=None):
-        self.icons_dir = icons_dir
-        self.database_manager = database_manager
-        self.parent = parent
-        self.init_database()
-
-    def init_database(self):
-        if QSqlDatabase.contains("my_conn"):
-            QSqlDatabase.removeDatabase("my_conn")
-        self.db = QSqlDatabase.addDatabase('QSQLITE', "my_conn")
-        self.db.setDatabaseName(str(self.database_manager.db_path))
-        if not self.db.open():
-            print("Não foi possível abrir a conexão com o banco de dados.")
-        else:
-            print("Conexão com o banco de dados aberta com sucesso.")
-            self.adjust_table_structure()
-
-    def adjust_table_structure(self):
-        query = QSqlQuery(self.db)
-        if not query.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='controle_atas'"):
-            print("Erro ao verificar existência da tabela:", query.lastError().text())
-        if not query.next():
-            print("Tabela 'controle_atas' não existe. Criando tabela...")
-            self.create_table_if_not_exists()
-        else:
-            print("Tabela 'controle_atas' existe. Verificando estrutura da coluna...")
-
-    def create_table_if_not_exists(self):
-        query = QSqlQuery(self.db)
-        if not query.exec("""
-            CREATE TABLE IF NOT EXISTS controle_atas (
-                item INTEGER PRIMARY KEY AUTOINCREMENT, catalogo TEXT, descricao TEXT, descricao_detalhada TEXT
-            )
-        """):
-            print("Erro ao criar a tabela 'controle_atas':", query.lastError().text())
-
-    def setup_model(self, table_name, editable=False):
-        self.model = CustomSqlTableModel(parent=self.parent, db=self.db, non_editable_columns=None, icons_dir=self.icons_dir)
-        self.model.setTable(table_name)
-        self.model.table_name = table_name  # Armazena o table_name no modelo
-
-        if editable:
-            self.model.setEditStrategy(QSqlTableModel.EditStrategy.OnFieldChange)
-        
-        self.model.select()
-        return self.model
-
-
-    def configure_columns(self, table_view, visible_columns):
-        for column in range(self.model.columnCount()):
-            header = self.model.headerData(column, Qt.Orientation.Horizontal)
-            if column not in visible_columns:
-                table_view.hideColumn(column)
-            else:
-                self.model.setHeaderData(column, Qt.Orientation.Horizontal, header)
+            # Abre o arquivo Excel após a criação (opcional)
+            os.startfile(file_path)
+        except PermissionError:
+            # Mostra uma mensagem para o usuário caso o arquivo já esteja aberto
+            QMessageBox.warning(None, "Aviso", "O arquivo 'tabela_nova.xlsx' já está aberto. Por favor, feche-o e tente novamente.")

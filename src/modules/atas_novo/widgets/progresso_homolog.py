@@ -1,13 +1,14 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
-from utils import *
+from PyQt6.QtSql import QSqlQuery
 import re
 import time
 import pandas as pd
 from pathlib import Path
-from utils import *
-from static.homologacao.worker_homologacao import Worker, TreeViewWindow, WorkerSICAF, extrair_dados_sicaf
+from src.modules.atas_novo.widgets.worker_homologacao import Worker, TreeViewWindow, WorkerSICAF, extrair_dados_sicaf
+import logging
+from src.modules.utils.add_button import add_button_func
 
 class ConclusaoDialog(QDialog):
     def __init__(self, parent=None):
@@ -30,14 +31,13 @@ class ConclusaoDialog(QDialog):
 
         self.setLayout(main_layout)
 
-class ProcessamentoDialog(QDialog):
-    def __init__(self, pdf_dir, icons, db_manager, tr_variavel_df_carregado, current_dataframe, main_window, parent=None):
+class ProcessamentoWidget(QWidget):
+    def __init__(self, pdf_dir, icons, model, database_ata_manager, main_window, parent=None):
         super().__init__(parent)
         self.pdf_dir = pdf_dir
         self.icon_cache = icons
-        self.db_manager = db_manager
-        self.tr_variavel_df_carregado = tr_variavel_df_carregado
-        self.current_dataframe = current_dataframe
+        self.model = model
+        self.database_ata_manager = database_ata_manager
         self.main_window = main_window
         self.homologacao_dataframe = None  # Inicializa o dataframe como None
         self.setWindowTitle("Processamento")
@@ -79,17 +79,10 @@ class ProcessamentoDialog(QDialog):
     def setup_button_layout(self, main_layout):
         button_layout = QHBoxLayout()
         
-        start_button = QPushButton("Iniciar Processamento")
-        start_button.clicked.connect(self.start_processing)
-        button_layout.addWidget(start_button)
+        add_button_func("Iniciar Processamento", "arquivo", self.start_processing, button_layout, self.icon_cache, "Clique para ver instruções")
+        add_button_func("Atualizar", "arquivo", self.update_pdf_count, button_layout, self.icon_cache, "Clique para ver instruções")
+        add_button_func("Abrir Pasta PDF", "arquivo", self.abrir_pasta_pdf, button_layout, self.icon_cache, "Clique para ver instruções")
 
-        update_button = QPushButton("Atualizar")
-        update_button.clicked.connect(self.update_pdf_count)
-        button_layout.addWidget(update_button)
-
-        abrir_pasta_button = QPushButton("Abrir Pasta PDF")
-        abrir_pasta_button.clicked.connect(self.abrir_pasta_pdf)
-        button_layout.addWidget(abrir_pasta_button)
 
         definir_pasta_button = QPushButton("Definir Pasta PDF Padrão")
         definir_pasta_button.clicked.connect(self.definir_pasta_pdf_padrao)
@@ -117,9 +110,10 @@ class ProcessamentoDialog(QDialog):
     def definir_pasta_pdf_padrao(self):
         folder = QFileDialog.getExistingDirectory(self, "Defina a Pasta PDF Padrão")
         if folder:
-            self.main_window.pdf_dir = Path(folder)
-            # Save the new configuration here
-            self.main_window.pdf_dir_changed.emit(self.main_window.pdf_dir)
+            # Atualiza self.pdf_dir com o novo caminho
+            self.pdf_dir = Path(folder)
+            # Emite o sinal para notificar a mudança de diretório PDF
+            self.main_window.pdf_dir_changed.emit(self.pdf_dir)
             QMessageBox.information(self, "Pasta Padrão Definida", f"A pasta padrão foi definida como: {folder}")
 
     def update_context(self, text):
@@ -156,52 +150,94 @@ class ProcessamentoDialog(QDialog):
         self.time_label.setText(f"Tempo total: {elapsed_time}s")
 
         # Processar dados e atualizar o treeView
-        self.homologacao_dataframe = save_to_dataframe(extracted_data, self.tr_variavel_df_carregado, self.current_dataframe)
-
-        # Lógica de salvar dados após a atribuição do dataframe
-        if self.homologacao_dataframe is not None and not self.homologacao_dataframe.empty:
-            self.current_dataframe = self.homologacao_dataframe  # Atualiza o DataFrame corrente
-            
-            # Verifica se as colunas necessárias existem para salvar os dados
-            if {'num_pregao', 'ano_pregao', 'uasg'}.issubset(self.current_dataframe.columns):
-                # Filtra linhas onde qualquer uma das colunas chave contém NaN e cria uma cópia para evitar o aviso
-                filtered_df = self.current_dataframe.dropna(subset=['num_pregao', 'ano_pregao', 'uasg']).copy()
-
-                # Gera o nome da tabela apenas para linhas sem NaN
-                def create_table_name(row):
-                    return f"{row['num_pregao']}-{row['ano_pregao']}-{row['uasg']}-Homolog"
-
-                # Use o .loc para atribuir os valores ao DataFrame filtrado
-                filtered_df.loc[:, 'table_name'] = filtered_df.apply(create_table_name, axis=1)
-
-                # Debugging output
-                print("Valores de 'num_pregao':", filtered_df['num_pregao'].unique())
-                print("Valores de 'ano_pregao':", filtered_df['ano_pregao'].unique())
-                print("Valores de 'uasg':", filtered_df['uasg'].unique())
-                print("Nomes de tabelas gerados:", filtered_df['table_name'].unique())
-
-                if filtered_df['table_name'].nunique() == 1:
-                    table_name = filtered_df['table_name'].iloc[0]
-                    self.save_data(table_name)  # Chama a função de salvar com o nome da tabela
-                else:
-                    QMessageBox.critical(self, "Erro", "A combinação de 'num_pregão', 'ano_pregão', e 'uasg' não é única. Por favor, verifique os dados.")
-            else:
-                QMessageBox.critical(self, "Erro", "Dados necessários para criar o nome da tabela não estão presentes.")
-
-            # Habilita o botão de abrir resultados
-            self.open_results_button.setEnabled(True)
-        else:
-            QMessageBox.warning(self, "Erro", "Falha ao salvar os dados.")
-        
-        # Habilita o botão Registro SICAF se homologacao_dataframe estiver disponível
+        self.homologacao_dataframe = save_to_dataframe(extracted_data)
+        # Salva os dados do DataFrame no modelo
+        self.atualizar_ou_inserir_controle_homologacao()
+        # Atualiza o botão de registro SICAF
         self.update_registro_sicaf_button()
 
+    def atualizar_ou_inserir_controle_homologacao(self):
+        if self.homologacao_dataframe is None or self.homologacao_dataframe.empty:
+            print("DataFrame de homologação está vazio ou não foi criado.")
+            return
+
+        # 1. Criação da tabela 'controle_homologacao' se não existir
+        create_table_query = QSqlQuery(self.model.database())
+        if not create_table_query.exec("""
+            CREATE TABLE IF NOT EXISTS controle_homologacao AS
+            SELECT * FROM controle_atas WHERE 1=0
+        """):
+            print("Erro ao criar a tabela 'controle_homologacao':", create_table_query.lastError().text())
+            return
+
+        # 2. Copia os dados de 'catalogo', 'descricao' e 'descricao_detalhada' de 'controle_atas' para 'controle_homologacao'
+        copy_query = QSqlQuery(self.model.database())
+        if not copy_query.exec("""
+            INSERT INTO controle_homologacao (item, catalogo, descricao, descricao_detalhada)
+            SELECT item, catalogo, descricao, descricao_detalhada FROM controle_atas
+        """):
+            print("Erro ao copiar colunas específicas para 'controle_homologacao':", copy_query.lastError().text())
+            return
+
+        # 3. Para cada linha no DataFrame, insere ou atualiza conforme necessário
+        for _, row in self.homologacao_dataframe.iterrows():
+            item_value = row['item']
+
+            # Verifica se o item já existe na tabela 'controle_homologacao'
+            check_query = QSqlQuery(self.model.database())
+            check_query.prepare("SELECT COUNT(*) FROM controle_homologacao WHERE item = :item")
+            check_query.bindValue(":item", item_value)
+            if not check_query.exec():
+                print(f"Erro ao verificar existência do item {item_value}:", check_query.lastError().text())
+                continue
+            check_query.next()
+            item_exists = check_query.value(0) > 0
+
+            if item_exists:
+                # Atualiza a linha existente para o 'item', preservando 'catalogo', 'descricao', 'descricao_detalhada'
+                update_query = QSqlQuery(self.model.database())
+                update_fields = ", ".join([
+                    f"{col} = :{col}" for col in self.homologacao_dataframe.columns 
+                    if col not in ["item", "catalogo", "descricao", "descricao_detalhada"]
+                ])
+                update_query.prepare(f"UPDATE controle_homologacao SET {update_fields} WHERE item = :item")
+
+                for col in self.homologacao_dataframe.columns:
+                    if col not in ["catalogo", "descricao", "descricao_detalhada"]:
+                        update_query.bindValue(f":{col}", row[col])
+
+                update_query.bindValue(":item", item_value)  # Bind para a cláusula WHERE
+                if not update_query.exec():
+                    print(f"Erro ao atualizar o item {item_value} em 'controle_homologacao':", update_query.lastError().text())
+            else:
+                # Insere uma nova linha para o 'item', incluindo todas as colunas do DataFrame
+                columns = ", ".join(self.homologacao_dataframe.columns)
+                placeholders = ", ".join([f":{col}" for col in self.homologacao_dataframe.columns])
+                insert_query = QSqlQuery(self.model.database())
+                insert_query.prepare(f"INSERT INTO controle_homologacao ({columns}) VALUES ({placeholders})")
+
+                for col in self.homologacao_dataframe.columns:
+                    insert_query.bindValue(f":{col}", row[col])
+
+                if not insert_query.exec():
+                    print(f"Erro ao inserir o item {item_value} em 'controle_homologacao':", insert_query.lastError().text())
+
+        print("Dados do DataFrame inseridos/atualizados na tabela 'controle_homologacao' com sucesso.")
+
+
+
+    def encontrar_linha_do_item(self, item_value):
+        for row in range(self.model.rowCount()):
+            item_index = self.model.index(row, self.model.fieldIndex("item"))
+            if self.model.data(item_index) == item_value:
+                return row
+        return None
 
     def save_data(self, table_name):
         if isinstance(self.current_dataframe, pd.DataFrame) and not self.current_dataframe.empty:
             # print("Salvando DataFrame com as colunas:", self.current_dataframe.columns)
             try:
-                with self.db_manager as conn:
+                with self.model as conn:
                     self.current_dataframe.to_sql(table_name, conn, if_exists='replace', index=False)
             except Exception as e:
                 QMessageBox.critical(self, "Erro", f"Erro ao salvar os dados no banco de dados: {e}")
@@ -234,32 +270,18 @@ class ProcessamentoDialog(QDialog):
         else:
             QMessageBox.warning(self, "Erro", "Não há dados disponíveis para mostrar no TreeView.")
   
-    def update_current_dataframe(self, new_data):
-        # Mesclar new_data com self.current_dataframe
-        if self.current_dataframe is not None:
-            # Verificar se 'cnpj' está presente em ambos os DataFrames
-            if 'cnpj' in self.current_dataframe.columns and 'cnpj' in new_data.columns:
-                self.current_dataframe = pd.merge(self.current_dataframe, new_data, on='cnpj', how='left')
-                print("DataFrame atualizado após merge:")
-                print(self.current_dataframe)
-            else:
-                QMessageBox.warning(self, "Erro", "Não é possível mesclar os dados. A coluna 'cnpj' não está presente em ambos os DataFrames.")
-        else:
-            self.current_dataframe = new_data
-            print("DataFrame atualizado com novos dados:")
-            print(self.current_dataframe)
-
     def abrir_registro_sicaf(self):
         if self.homologacao_dataframe is None:
             QMessageBox.warning(self, "Erro", "Dados não disponíveis.")
             return
 
         # Instancia e exibe o diálogo de Registro SICAF com pdf_dir correto
-        dialog = RegistroSICAFDialog(
+        dialog = RegistroSICAFDialog (
             homologacao_dataframe=self.homologacao_dataframe,
             pdf_dir=self.pdf_dir,
-            db_manager=self.db_manager,
+            model=self.model,
             icons=self.icon_cache,
+            database_ata_manager=self.database_ata_manager,
             parent=self
         )
         dialog.exec()
@@ -269,13 +291,14 @@ class ProcessamentoDialog(QDialog):
         self.registro_sicaf_button.setEnabled(self.homologacao_dataframe is not None)
 
 class RegistroSICAFDialog(QDialog):
-    def __init__(self, homologacao_dataframe, pdf_dir, db_manager, icons, parent=None, update_context_callback=None):
+    def __init__(self, homologacao_dataframe, pdf_dir, model, icons, database_ata_manager, parent=None, update_context_callback=None):
         super().__init__(parent)
         self.homologacao_dataframe = homologacao_dataframe
         self.sicaf_dir = pdf_dir / 'pasta_sicaf'
-        self.db_manager = db_manager
+        self.model = model
         self.icon_cache = icons
-        self.update_context = update_context_callback  # Recebe o método de atualização de contexto
+        self.database_ata_manager = database_ata_manager  #
+        self.update_context = update_context_callback  
         self.setWindowTitle("Registro SICAF")
         self.setFixedSize(1000, 600)
         self.setup_ui()
@@ -355,19 +378,6 @@ class RegistroSICAFDialog(QDialog):
             self.data_extracted.emit(self.current_dataframe)
         else:
             print("Nenhum dado foi extraído de nenhum dos arquivos.")
-
-    def save_data(self, table_name):
-        if isinstance(self.current_dataframe, pd.DataFrame) and not self.current_dataframe.empty:
-            try:
-                with self.db_manager as conn:
-                    self.current_dataframe.to_sql(table_name, conn, if_exists='replace', index=False)
-                print(f"Dados salvos na tabela {table_name} com sucesso.")
-            except Exception as e:
-                QMessageBox.critical(self, "Erro", f"Erro ao salvar os dados no banco de dados: {e}")
-        else:
-            QMessageBox.critical(self, "Erro", "Nenhum DataFrame válido disponível para salvar ou o objeto não é um DataFrame.")
-
-
 
     def create_button(self, text, icon, callback, tooltip_text, icon_size=QSize(30, 30), button_size=QSize(120, 30)):
         """Cria um botão personalizado com texto, ícone, callback e tooltip."""
@@ -485,7 +495,26 @@ class RegistroSICAFDialog(QDialog):
             
     def atualizar_lista(self):
         """Atualiza o conteúdo de self.left_list_widget com dados de empresa e cnpj e o conteúdo de self.pdf_list_widget com os arquivos PDF."""
-        
+
+        # Verifica e cria a tabela 'registro_sicaf' no banco de dados, se necessário
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS registro_sicaf (
+            empresa TEXT,
+            cnpj TEXT PRIMARY KEY,
+            endereco TEXT,
+            cep TEXT,
+            municipio TEXT,
+            telefone TEXT,
+            email TEXT,
+            responsavel_legal TEXT
+        )
+        """
+        try:
+            self.database_ata_manager.execute_query(create_table_query)
+        except Exception as e:
+            QMessageBox.critical(self, "Erro no Banco de Dados", f"Erro ao criar a tabela registro_sicaf: {e}")
+            return
+
         # Atualiza a lista de empresas e CNPJs no layout esquerdo
         self.left_list_widget.clear()
         unique_combinations = self.homologacao_dataframe[['empresa', 'cnpj']].drop_duplicates()
@@ -497,7 +526,22 @@ class RegistroSICAFDialog(QDialog):
             # Ignora combinações onde 'empresa' ou 'cnpj' são nulos
             if pd.isnull(empresa) or pd.isnull(cnpj):
                 continue
-            
+
+            # Verifica se o CNPJ já existe na tabela registro_sicaf
+            check_cnpj_query = "SELECT 1 FROM registro_sicaf WHERE cnpj = ?"
+            exists = self.database_ata_manager.execute_query(check_cnpj_query, (cnpj,))
+
+            # Insere empresa e cnpj no banco de dados, se o CNPJ não existir
+            if not exists:
+                insert_query = """
+                INSERT INTO registro_sicaf (empresa, cnpj)
+                VALUES (?, ?)
+                """
+                try:
+                    self.database_ata_manager.execute_query(insert_query, (empresa, cnpj))
+                except Exception as e:
+                    logging.error(f"Erro ao inserir empresa e CNPJ no banco de dados: {e}")
+
             # Criação de um item no QListWidget
             item_widget = QWidget()
             item_layout = QHBoxLayout(item_widget)
@@ -546,6 +590,7 @@ class RegistroSICAFDialog(QDialog):
         # Atualiza o texto do right_label dinamicamente
         self.right_label.setText(right_label_text)
 
+
     def abrir_pasta_sicaf(self):
         """Abre o diretório sicaf_dir no explorador de arquivos, criando-o se não existir."""
         if not self.sicaf_dir.exists():
@@ -553,15 +598,14 @@ class RegistroSICAFDialog(QDialog):
             
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.sicaf_dir)))
 
-
     def get_icon_for_cnpj(self, cnpj):
         """Verifica se o CNPJ existe na tabela registro_sicaf usando db_manager e retorna o ícone em cache correspondente."""
         try:
             query = "SELECT 1 FROM registro_sicaf WHERE cnpj = ?"
-            result = self.db_manager.execute_query(query, (cnpj,))  # Retorna uma lista de resultados
+            result = self.database_ata_manager.execute_query(query, (cnpj,))  # Usa db_manager para a consulta
             return self.icon_cache["confirm"] if result else self.icon_cache["cancel"]
         except Exception as e:
-            QMessageBox.critical(self, "Erro no Banco de Dados", f"Erro ao acessar o banco de dados: {e}")
+            QMessageBox.critical(self, "Erro no Banco de Dados", f"Carregamento SICAF: Erro ao acessar o banco de dados: {e}")
             return self.icon_cache["cancel"]  # Ícone padrão em caso de erro
 
     def load_icons(self):
@@ -909,36 +953,37 @@ def extrair_uasg_e_pregao(conteudo: str, padrao_1: str, padrao_srp: str, padrao_
     return {}
 
 
-def save_to_dataframe(extracted_data, tr_variavel_df_carregado, existing_dataframe=None):
+def save_to_dataframe(extracted_data): 
     df_extracted = create_dataframe_from_pdf_files(extracted_data)
     df_extracted['item'] = pd.to_numeric(df_extracted['item'], errors='coerce').astype('Int64')
+    return df_extracted 
     
-    if tr_variavel_df_carregado is not None:
-        tr_variavel_df_carregado['item'] = pd.to_numeric(tr_variavel_df_carregado['item'], errors='coerce').astype('Int64')
-        merged_df = pd.merge(tr_variavel_df_carregado, df_extracted, on='item', how='outer', suffixes=('_x', '_y'))
+    # if tr_variavel_df_carregado is not None:
+    #     tr_variavel_df_carregado['item'] = pd.to_numeric(tr_variavel_df_carregado['item'], errors='coerce').astype('Int64')
+    #     merged_df = pd.merge(tr_variavel_df_carregado, df_extracted, on='item', how='outer', suffixes=('_x', '_y'))
 
-        for column in merged_df.columns:
-            if column.endswith('_y'):
-                col_x = column[:-2] + '_x'
-                if col_x in merged_df.columns:
-                    merged_df[col_x] = merged_df[col_x].combine_first(merged_df[column])
-                merged_df.drop(columns=[column], inplace=True)
-                merged_df.rename(columns={col_x: col_x[:-2]}, inplace=True)
+    #     for column in merged_df.columns:
+    #         if column.endswith('_y'):
+    #             col_x = column[:-2] + '_x'
+    #             if col_x in merged_df.columns:
+    #                 merged_df[col_x] = merged_df[col_x].combine_first(merged_df[column])
+    #             merged_df.drop(columns=[column], inplace=True)
+    #             merged_df.rename(columns={col_x: col_x[:-2]}, inplace=True)
 
-        # Reordenando as colunas
-        column_order = ['grupo', 'item', 'catalogo', 'descricao', 'unidade', 'quantidade', 'valor_estimado', 
-                        'valor_homologado_item_unitario', 'percentual_desconto', 'valor_estimado_total_do_item', 'valor_homologado_total_item',
-                        'marca_fabricante', 'modelo_versao', 'situacao', 'descricao_detalhada', 'uasg', 'orgao_responsavel', 'num_pregao', 'ano_pregao', 
-                        'srp', 'objeto', 'melhor_lance', 'valor_negociado', 'ordenador_despesa', 'empresa', 'cnpj',
-                        ]
-        merged_df = merged_df.reindex(columns=column_order)
+    #     # Reordenando as colunas
+    #     column_order = ['grupo', 'item', 'catalogo', 'descricao', 'unidade', 'quantidade', 'valor_estimado', 
+    #                     'valor_homologado_item_unitario', 'percentual_desconto', 'valor_estimado_total_do_item', 'valor_homologado_total_item',
+    #                     'marca_fabricante', 'modelo_versao', 'situacao', 'descricao_detalhada', 'uasg', 'orgao_responsavel', 'num_pregao', 'ano_pregao', 
+    #                     'srp', 'objeto', 'melhor_lance', 'valor_negociado', 'ordenador_despesa', 'empresa', 'cnpj',
+    #                     ]
+    #     merged_df = merged_df.reindex(columns=column_order)
 
-        if existing_dataframe is not None:
-            final_df = pd.concat([existing_dataframe, merged_df]).drop_duplicates(subset='item').reset_index(drop=True)
-        else:
-            final_df = merged_df
+    #     if existing_dataframe is not None:
+    #         final_df = pd.concat([existing_dataframe, merged_df]).drop_duplicates(subset='item').reset_index(drop=True)
+    #     else:
+    #         final_df = merged_df
 
-        return final_df
-    else:
-        QMessageBox.warning(None, "Aviso", "Nenhum DataFrame de termo de referência carregado.")
-        return None
+    #     return final_df
+    # else:
+    #     QMessageBox.warning(None, "Aviso", "Nenhum DataFrame de termo de referência carregado.")
+    #     return None

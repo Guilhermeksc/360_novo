@@ -22,11 +22,11 @@ DATA_LICITACAO_PATH = LICITACAO_DIR / "controle_licitacao.db"
 
 ATAS_DIR = MODULES_DIR / "atas_novo"
 DATA_ATAS_PATH = ATAS_DIR / "controle_atas.db"
+PDF_DIR = ATAS_DIR / "termo_homologacao"
 
 CONTRATOS_DIR = MODULES_DIR / "contratos"
 JSON_CONTRATOS_DIR = CONTRATOS_DIR / "json"
 DATA_CONTRATOS_PATH = CONTRATOS_DIR / "controle_contratos.db"
-
 
 CONTROLE_DADOS = DATABASE_DIR / "controle_dados.db"
 CONTROLE_CONTRATOS_DADOS = DATABASE_DIR / "controle_contrato.db"

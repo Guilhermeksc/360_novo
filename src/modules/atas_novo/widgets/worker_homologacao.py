@@ -1,11 +1,9 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
-from utils import *
 import re
 import time
 import pandas as pd
-from utils import *
 import pdfplumber
 
 class Worker(QThread):
@@ -426,7 +424,7 @@ class ModeloTreeview:
             result = self.db_manager.execute_query(query, (cnpj,))
             return self.icon_cache["check"] if result else self.icon_cache["alert"]
         except Exception as e:
-            print(f"Erro ao acessar o banco de dados: {e}")
+            print(f"Modelo Treeview Erro ao acessar o banco de dados: {e}")
             return self.icon_cache["alert"]
 
     def determinar_itens_iguais(self, row, empresa_items):

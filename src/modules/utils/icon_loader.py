@@ -107,4 +107,7 @@ def load_icons():
         "mensagem": load_icon("mensagem.png"),
         "time": load_icon("time.png"),
         "directory": load_icon("directory.png"),
+        "check": load_icon("check.png"),
+        "processing": load_icon("processing.png"),
+
                 }

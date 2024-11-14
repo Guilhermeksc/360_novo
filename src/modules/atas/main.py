@@ -9,7 +9,7 @@ from importar_tr import TermoReferenciaDialog
 import os
 import sqlite3
 import pandas as pd
-from static.homologacao.progresso_homolog import ProcessamentoDialog
+from modules.atas_novo.widgets.progresso_homolog import ProcessamentoDialog
 from gerar_ata import GerarAtaWidget
 from indicadores import IndicadoresWidget
 from consultar_api import ConsultarAPI

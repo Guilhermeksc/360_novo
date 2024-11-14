@@ -3,6 +3,10 @@ from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from src.modules.utils.add_button import add_button
 from src.modules.atas_novo.widgets.importar_tr import TermoReferenciaWidget
+from src.modules.atas_novo.widgets.progresso_homolog import ProcessamentoWidget
+from pathlib import Path
+from src.config.paths import PDF_DIR
+from src.modules.atas_novo.database_manager.db_manager import DatabaseATASManager
 
 class GerarAtasView(QMainWindow):
     instrucoesSignal = pyqtSignal()
@@ -11,15 +15,17 @@ class GerarAtasView(QMainWindow):
     apiSignal = pyqtSignal()
     atasSignal = pyqtSignal()
     indicadoresSignal = pyqtSignal()
-
+    pdf_dir_changed = pyqtSignal(Path) 
 
     def __init__(self, icons, model, database_path, parent=None):
         super().__init__(parent)
         self.icons = icons
         self.model = model
-        self.database_path = database_path
-        # Configura a interface de usuário
+        self.database_ata_manager = DatabaseATASManager(database_path)
+        self.pdf_dir = PDF_DIR
         self.setup_ui()
+
+        self.pdf_dir_changed.connect(self.on_pdf_dir_changed)
 
     def setup_ui(self):
         # Configuração inicial do layout principal
@@ -49,10 +55,15 @@ class GerarAtasView(QMainWindow):
         self.content_area.addWidget(self.instrucoes_widget)
 
         self.tr_widget = TermoReferenciaWidget(self, self.icons)
-
         self.content_area.addWidget(self.tr_widget)
 
-        self.homolog_widget = QLabel("Conteúdo do Termo de Homologação")
+        self.homolog_widget = ProcessamentoWidget(
+            pdf_dir=self.pdf_dir,
+            icons=self.icons,
+            model=self.model,
+            database_ata_manager=self.database_ata_manager,  # Passa a instância do DatabaseATASManager
+            main_window=self
+        )
         self.content_area.addWidget(self.homolog_widget)
 
         self.api_widget = QLabel("Conteúdo de Consulta API")
@@ -114,3 +125,7 @@ class GerarAtasView(QMainWindow):
         table_view.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         table_view.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
         table_view.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+
+    def on_pdf_dir_changed(self, new_pdf_dir):
+        # Lida com a mudança do diretório PDF, se necessário
+        print(f"Novo diretório PDF definido: {new_pdf_dir}")

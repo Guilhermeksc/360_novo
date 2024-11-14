@@ -30,9 +30,8 @@ class GerarAtasController(QObject):
         self.model.tabelaCarregada.connect(self.configurar_sql_model)
 
     def configurar_sql_model(self):
-        # Configura o modelo SQL e aplica ao table_view
-        sql_model = self.model.obter_sql_model()
-        self.view.tr_widget.table_view.setModel(sql_model)
+        # Aplica `self.model` ao `table_view` diretamente
+        self.view.tr_widget.table_view.setModel(self.model)
         self.view.configurar_visualizacao_tabela_tr(self.view.tr_widget.table_view)
 
     def abrir_tabela_nova(self):
@@ -50,22 +49,12 @@ class GerarAtasController(QObject):
     def termo_referencia(self):
         # Define o widget atual para Termo de Referência
         self.view.content_area.setCurrentWidget(self.view.tr_widget)
-
-        # Obtém o modelo SQL do GerarAtasModel
-        sql_model = self.model.obter_sql_model()
-
-        # Verifica se o modelo foi configurado corretamente
-        if sql_model is None:
-            print("Erro: O modelo SQL não foi configurado.")
-            return
-
         # Configura o QTableView com o modelo e ajusta a visualização
-        self.view.tr_widget.table_view.setModel(sql_model)
+        self.view.tr_widget.table_view.setModel(self.model)
         self.view.configurar_visualizacao_tabela_tr(self.view.tr_widget.table_view)
 
-
     def termo_homologacao(self):
-        # Atualiza para o widget do termo de homologação
+        # Exibe o widget de Processamento para Termo de Homologação
         self.view.content_area.setCurrentWidget(self.view.homolog_widget)
 
     def api_consulta(self):
