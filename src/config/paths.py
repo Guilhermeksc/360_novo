@@ -1,48 +1,56 @@
+import sys
 from pathlib import Path
 import json
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+if getattr(sys, 'frozen', False):  # Executável compilado
+    BASE_DIR = Path(sys._MEIPASS) / "src"  # Diretório temporário + 'src'
+else:  # Ambiente de desenvolvimento
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Diretórios
 DATABASE_DIR = BASE_DIR / "database"
+DATA_ATAS_PATH = DATABASE_DIR / "controle_atas.db"
+DATA_LICITACAO_PATH = DATABASE_DIR / "controle_licitacao.db"
+DATA_DISPENSA_ELETRONICA_PATH = DATABASE_DIR / "controle_contratacao_direta.db"
+DATA_CONTRATOS_PATH = DATABASE_DIR / "controle_contrato.db"
+CONTROLE_ASS_CONTRATOS_DADOS = DATABASE_DIR / "controle_assinatura.db"
+CONTROLE_DADOS = DATABASE_DIR / "controle_dados.db"
+
 CONFIG_FILE = BASE_DIR / "config.json"
 PRE_DEFINICOES_JSON = BASE_DIR / "pre_definicioes.json"
-
-STYLE_PATH = BASE_DIR / "style.css" 
+AGENTES_RESPONSAVEIS_FILE = BASE_DIR / "agentes_responsaveis.json"
+ORGANIZACOES_FILE = BASE_DIR / "organizacoes.json"
 
 # Resources
 RESOURCES_DIR = BASE_DIR / "resources"
 TEMPLATE_DIR = RESOURCES_DIR / "templates"
+STYLE_PATH = RESOURCES_DIR / "style.css" 
 ICONS_DIR = RESOURCES_DIR / "icons"
 IMAGES_DIR = RESOURCES_DIR / "images"
 TEMPLATE_DIR = RESOURCES_DIR / "template"
 TEMPLATE_PATH = TEMPLATE_DIR / 'template_ata.docx'
 
-
 # Modules
 MODULES_DIR = BASE_DIR / "modules"
 DISPENSA_ELETRONICA_DIR = MODULES_DIR / "dispensa_eletronica"
-DATA_DISPENSA_ELETRONICA_PATH = DISPENSA_ELETRONICA_DIR / "controle_contratacao_direta.db"
 
 LICITACAO_DIR = MODULES_DIR / "planejamento"
-DATA_LICITACAO_PATH = LICITACAO_DIR / "controle_licitacao.db"
 
 ATAS_DIR = MODULES_DIR / "atas_novo"
-DATA_ATAS_PATH = ATAS_DIR / "controle_atas.db"
+
 PDF_DIR = ATAS_DIR / "termo_homologacao"
 
 CONTRATOS_DIR = MODULES_DIR / "contratos"
 JSON_CONTRATOS_DIR = CONTRATOS_DIR / "json"
-DATA_CONTRATOS_PATH = CONTRATOS_DIR / "controle_contratos.db"
 
-CONTROLE_DADOS = DATABASE_DIR / "controle_dados.db"
-CONTROLE_CONTRATOS_DADOS = DATABASE_DIR / "controle_contrato.db"
-CONTROLE_ASS_CONTRATOS_DADOS = DATABASE_DIR / "controle_assinatura.db"
 HOME_PATH = BASE_DIR / "main.py"
 CONTROLE_ATAS_DIR = DATABASE_DIR / "Atas"
 
 TEMPLATE_DISPENSA_DIR = DISPENSA_ELETRONICA_DIR / "template"
 
-CONFIG_FILE = 'config.json'
+CONFIG_FILE = BASE_DIR / 'config.json'
 
+# Funções de Configuração
 def load_config_path_id():
     if not Path(CONFIG_FILE).exists():
         return {}

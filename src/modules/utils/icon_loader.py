@@ -106,10 +106,16 @@ def load_icons():
         "excel_up": load_icon("excel_up.png"),
         "mensagem": load_icon("mensagem.png"),
         "time": load_icon("time.png"),
-        "directory": load_icon("directory.png"),
         "check": load_icon("check.png"),
         "processing": load_icon("processing.png"),
         "page": load_icon("page.png"),
         "stats": load_icon("stats.png"),
+        "layers": load_icon("layers.png"),
+        "list-check": load_icon("list-check.png"),
+        "features": load_icon("features.png"),
+        "star": load_icon("star.png"),
+        "result": load_icon("result.png"),
+        "add-folder": load_icon("add-folder.png"),
+        "alert": load_icon("alert.png"),
 
                 }

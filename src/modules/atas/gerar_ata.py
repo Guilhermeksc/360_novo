@@ -569,7 +569,7 @@ def gerar_excel_relacao_itens(itens, caminho_arquivo_excel='relacao_itens.xlsx')
     ws = wb.active
 
     fonte_tamanho_12_cinza = Font(size=12, bold=True)
-    fundo_cinza = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+    fundo_cinza = PatternFill(start_color="E3E3E3", end_color="E3E3E3", fill_type="solid")
     fonte_tamanho_10 = Font(size=10)
 
     linha_atual = 1
@@ -665,7 +665,8 @@ def inserir_tabela_do_excel_no_documento(doc, caminho_arquivo_excel):
                 run = row_cells[0].paragraphs[0].add_run(str(ws.cell(row=i+1, column=1).value))
                 run.font.size = Pt(12)
                 run.font.bold = True
-                shading_elm = parse_xml(r'<w:shd {} w:fill="D3D3D3"/>'.format(nsdecls('w')))
+                run.font.name = "Calibri"
+                shading_elm = parse_xml(r'<w:shd {} w:fill="E3E3E3"/>'.format(nsdecls('w')))
                 row_cells[0]._element.get_or_add_tcPr().append(shading_elm)
 
                 # Segunda linha (mesclada com "Descrição Detalhada:" em negrito e quebras de linha)
@@ -674,16 +675,19 @@ def inserir_tabela_do_excel_no_documento(doc, caminho_arquivo_excel):
                 
                 # Adiciona quebra de linha antes de "Descrição Detalhada:"
                 run = row_cells[0].paragraphs[0].add_run("\n")
-                
+                run.font.name = "Calibri"
+
                 # Adiciona "Descrição Detalhada:" em negrito
                 run = row_cells[0].paragraphs[0].add_run("Descrição Detalhada:")
                 run.font.size = Pt(10)
                 run.font.bold = True
+                run.font.name = "Calibri"
 
                 # Adicionando o texto restante após "Descrição Detalhada:"
                 texto_segunda_linha = str(ws.cell(row=i+2, column=1).value)
                 run = row_cells[0].paragraphs[0].add_run(f" {texto_segunda_linha}")
                 run.font.size = Pt(10)
+                run.font.name = "Calibri"
                 
                 # Adiciona quebra de linha após o texto
                 row_cells[0].paragraphs[0].add_run("\n")
@@ -695,35 +699,34 @@ def inserir_tabela_do_excel_no_documento(doc, caminho_arquivo_excel):
                     if value is not None:
                         texto = str(value)
                         if j == 0 and texto.startswith("UF:"):
-                            # Negrito apenas para "UF:"
                             run = row_cells[j].paragraphs[0].add_run("UF:")
                             run.font.size = Pt(10)
                             run.font.bold = True
-                            
-                            # Texto que segue "UF:"
+                            run.font.name = "Calibri"
                             run = row_cells[j].paragraphs[0].add_run(texto[3:])
                             run.font.size = Pt(10)
+                            run.font.name = "Calibri"
                         elif j == 1 and texto.startswith("Marca:"):
-                            # Negrito apenas para "Marca:"
                             run = row_cells[j].paragraphs[0].add_run("Marca:")
                             run.font.size = Pt(10)
                             run.font.bold = True
-                            
-                            # Texto que segue "Marca:"
+                            run.font.name = "Calibri"
                             run = row_cells[j].paragraphs[0].add_run(texto[6:])
                             run.font.size = Pt(10)
+                            run.font.name = "Calibri"
                         elif j == 2 and texto.startswith("Modelo:"):
-                            # Negrito apenas para "Modelo:"
                             run = row_cells[j].paragraphs[0].add_run("Modelo:")
                             run.font.size = Pt(10)
                             run.font.bold = True
-                            
-                            # Texto que segue "Modelo:"
+                            run.font.name = "Calibri"
                             run = row_cells[j].paragraphs[0].add_run(texto[7:])
                             run.font.size = Pt(10)
+                            run.font.name = "Calibri"
                         else:
                             row_cells[j].text = texto
-                            row_cells[j].paragraphs[0].runs[0].font.size = Pt(10)
+                            run = row_cells[j].paragraphs[0].runs[0]
+                            run.font.size = Pt(10)
+                            run.font.name = "Calibri"
 
                 # Quarta linha (manter formatação padrão)
                 row_cells = table.add_row().cells
@@ -732,39 +735,38 @@ def inserir_tabela_do_excel_no_documento(doc, caminho_arquivo_excel):
                     if value is not None:
                         texto = str(value)
                         if j == 0 and texto.startswith("Quantidade:"):
-                            # Negrito apenas para "Quantidade:"
                             run = row_cells[j].paragraphs[0].add_run("Quantidade:")
                             run.font.size = Pt(10)
                             run.font.bold = True
-
-                            # Texto que segue "Quantidade:"
+                            run.font.name = "Calibri"
                             run = row_cells[j].paragraphs[0].add_run(texto[11:])
                             run.font.size = Pt(10)
-                            row_cells[j].paragraphs[0].add_run("\n")  # Adiciona quebra de linha
+                            run.font.name = "Calibri"
+                            row_cells[j].paragraphs[0].add_run("\n")
                         elif j == 1 and texto.startswith("Valor Unitário:"):
-                            # Negrito apenas para "Valor Unitário:"
                             run = row_cells[j].paragraphs[0].add_run("Valor Unitário:")
                             run.font.size = Pt(10)
                             run.font.bold = True
-
-                            # Texto que segue "Valor Unitário:"
+                            run.font.name = "Calibri"
                             run = row_cells[j].paragraphs[0].add_run(texto[15:])
                             run.font.size = Pt(10)
-                            row_cells[j].paragraphs[0].add_run("\n")  # Adiciona quebra de linha
+                            run.font.name = "Calibri"
+                            row_cells[j].paragraphs[0].add_run("\n")
                         elif j == 2 and texto.startswith("Valor Total:"):
-                            # Negrito apenas para "Valor Total:"
                             run = row_cells[j].paragraphs[0].add_run("Valor Total:")
                             run.font.size = Pt(10)
                             run.font.bold = True
-
-                            # Texto que segue "Valor Total:"
+                            run.font.name = "Calibri"
                             run = row_cells[j].paragraphs[0].add_run(texto[12:])
                             run.font.size = Pt(10)
-                            row_cells[j].paragraphs[0].add_run("\n")  # Adiciona quebra de linha
+                            run.font.name = "Calibri"
+                            row_cells[j].paragraphs[0].add_run("\n")
                         else:
                             row_cells[j].text = texto
-                            row_cells[j].paragraphs[0].runs[0].font.size = Pt(10)
-                            row_cells[j].paragraphs[0].add_run("\n")  # Adiciona quebra de linha
+                            run = row_cells[j].paragraphs[0].runs[0]
+                            run.font.size = Pt(10)
+                            run.font.name = "Calibri"
+                            row_cells[j].paragraphs[0].add_run("\n")
             # Mover a tabela para logo após o parágrafo atual
             move_table_after_paragraph(paragraph, table)
             break

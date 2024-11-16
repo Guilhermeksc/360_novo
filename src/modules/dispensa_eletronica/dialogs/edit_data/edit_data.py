@@ -262,6 +262,8 @@ class EditarDadosWindow(QMainWindow):
         # Emissão do sinal para salvar os dados
         self.save_data_signal.emit(data_to_save)
 
+        self.show_confirmation_message()
+
     def setup_ui(self):
         # Configura o widget principal e define o fundo preto e borda
         main_widget = QWidget(self)
@@ -396,6 +398,29 @@ class EditarDadosWindow(QMainWindow):
 
         return nav_frame
 
+    def show_confirmation_message(self, message="Dados salvos com sucesso!"):
+        """Exibe uma mensagem de confirmação temporária."""
+        confirmation_label = QLabel(message, self)
+        confirmation_label.setStyleSheet("""
+            QLabel {
+                background-color: #009B3A;
+                color: white;
+                font-size: 16px;
+                border-radius: 5px;
+                padding: 10px;
+            }
+        """)
+        confirmation_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        confirmation_label.setFixedSize(300, 50)
+        confirmation_label.move(
+            self.width() // 2 - confirmation_label.width() // 2,
+            self.height() // 2 - confirmation_label.height() // 2
+        )
+        confirmation_label.show()
+
+        # Fecha a mensagem automaticamente após 1 segundo
+        QTimer.singleShot(700, confirmation_label.close)
+        
     def on_navigation_button_clicked(self, name, button):
         if self.selected_button:
             self.selected_button.setProperty("class", "nav-button")
@@ -667,15 +692,15 @@ class EditarDadosWindow(QMainWindow):
         
         layout = QVBoxLayout()
 
-        # Criando cada campo de entrada e armazenando como atributo da classe
         valor_total_layout = QHBoxLayout()
         valor_total_label = QLabel("Valor Estimado:")
-        # Obtém o valor inicial e passa para o campo
-        valor_inicial = self.dados.get('valor_total', '0')
-        self.valor_total_edit = CustomQLineEdit(valor_inicial)
 
+        # Obtém o valor inicial (garantindo que é numérico)
+        valor_inicial = self.dados.get('valor_total', 0.0)  
+        self.valor_total_edit = CustomQLineEdit(valor_inicial)
         valor_total_layout.addWidget(valor_total_label)
         valor_total_layout.addWidget(self.valor_total_edit)
+
         layout.addLayout(valor_total_layout)
         acao_interna_layout = QHBoxLayout()
         acao_interna_label = QLabel("Ação Interna:")

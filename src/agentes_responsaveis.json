@@ -1,0 +1,108 @@
+{
+    "ordenador_de_despesa": [
+        {
+            "Nome": "TESTES",
+            "Posto": "Capitão de Fragata (IM)",
+            "Abreviacao": "CF",
+            "Funcao": "Ordenador de Despesa"
+        },
+        {
+            "Nome": "TESTES",
+            "Posto": "Capitão de Fragata (IM)",
+            "Abreviacao": "CF (IM)",
+            "Funcao": "Ordenador de Despesa"
+        },
+        {
+            "Nome": "TESTESXXX",
+            "Posto": "Capitão de Mar e Guerra (IM)",
+            "Abreviacao": "CMG (IM)",
+            "Funcao": "Ordenador de Despesa"
+        },
+        {
+            "Nome": "TSETSET",
+            "Posto": "Capitão de Mar e Guerra (IM)",
+            "Abreviacao": "CMG (IM)",
+            "Funcao": "Ordenador de Despesa"
+        }
+    ],
+    "agente_fiscal": [
+        {
+            "Nome": "TESTE",
+            "Posto": "Capitão de Fragata (IM)",
+            "Abreviacao": "CF (IM)",
+            "Funcao": "Agente Fiscal"
+        },
+        {
+            "Nome": "GUILHERME KIRSCHNER",
+            "Posto": "Capitão de Corveta (IM)",
+            "Abreviacao": "CC (IM)",
+            "Funcao": "Agente Fiscal Substituto"
+        },
+        {
+            "Nome": "TTTT",
+            "Posto": "Capitão de Mar e Guerra (IM)",
+            "Abreviacao": "CMG (IM)",
+            "Funcao": "Agente Fiscal"
+        },
+        {
+            "Nome": "XXXXXXX",
+            "Posto": "Capitão de Mar e Guerra (IM)",
+            "Abreviacao": "CMG (IM)",
+            "Funcao": "Agente Fiscal"
+        },
+        {
+            "Nome": "TESTESTTE",
+            "Posto": "Capitão de Mar e Guerra (IM)",
+            "Abreviacao": "CMG (IM)",
+            "Funcao": "Agente Fiscal"
+        },
+        {
+            "Nome": "TSETSETEST",
+            "Posto": "Capitão de Mar e Guerra (IM)",
+            "Abreviacao": "CMG (IM)",
+            "Funcao": "Agente Fiscal"
+        },
+        {
+            "Nome": "SETSETSETEST",
+            "Posto": "Capitão de Mar e Guerra (IM)",
+            "Abreviacao": "CMG (IM)",
+            "Funcao": "Agente Fiscal"
+        },
+        {
+            "Nome": "TESTSETSETSET",
+            "Posto": "Capitão de Mar e Guerra (IM)",
+            "Abreviacao": "CMG (IM)",
+            "Funcao": "Agente Fiscal"
+        }
+    ],
+    "gerente_de_crédito": [
+        {
+            "Nome": "TESTES",
+            "Posto": "Segundo-Tenente",
+            "Abreviacao": "2ºTEN",
+            "Funcao": "Gerente de Crédito"
+        }
+    ],
+    "operador_da_contratação": [
+        {
+            "Nome": "TESTET",
+            "Posto": "Primeiro-Tenente",
+            "Abreviacao": "1ºTEN",
+            "Funcao": "Operador da Contratação"
+        },
+        {
+            "Nome": "TESTES",
+            "Posto": "Segundo-Sargento",
+            "Abreviacao": "2º SG",
+            "Funcao": "Operador da Contratação"
+        }
+    ],
+    "pregoeiro": [
+        {
+            "Nome": "TESTSET",
+            "Posto": "Primeiro-Tenente",
+            "Abreviacao": "1ºTEN",
+            "Funcao": "Pregoeiro"
+        }
+    ]
+}

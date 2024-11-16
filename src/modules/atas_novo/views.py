@@ -3,6 +3,7 @@ from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from src.modules.utils.add_button import add_button
 from src.modules.atas_novo.widgets.importar_tr import TermoReferenciaWidget
+from src.modules.atas_novo.widgets.instrucoes import InstructionWidget
 from src.modules.atas_novo.widgets.progresso_homolog import ProcessamentoWidget
 from src.modules.atas_novo.widgets.atas import GerarAtaWidget
 from pathlib import Path
@@ -52,7 +53,7 @@ class GerarAtasView(QMainWindow):
 
     def init_content_widgets(self):
         # Criação dos widgets de conteúdo e adição ao QStackedWidget
-        self.instrucoes_widget = QLabel("Conteúdo das Instruções")
+        self.instrucoes_widget = InstructionWidget(self)
         self.content_area.addWidget(self.instrucoes_widget)
 
         self.tr_widget = TermoReferenciaWidget(self, self.icons)
@@ -94,15 +95,14 @@ class GerarAtasView(QMainWindow):
         button_layout = QHBoxLayout()
 
         # Cria cada botão individualmente chamando a função `add_button`
-        add_button("Instruções", "arquivo", self.instrucoesSignal, button_layout, self.icons, "Clique para ver instruções")
-        add_button("Termo de Referência", "stats", self.trSignal, button_layout, self.icons, "Acessar Termo de Referência")
-        add_button("Termo de Homologação", "page", self.homologSignal, button_layout, self.icons, "Acessar Termo de Homologação")
+        add_button("Instruções", "list-check", self.instrucoesSignal, button_layout, self.icons, "Clique para ver instruções")
+        add_button("Termo de Referência", "layers", self.trSignal, button_layout, self.icons, "Acessar Termo de Referência")
+        add_button("Termo de Homologação", "layers", self.homologSignal, button_layout, self.icons, "Acessar Termo de Homologação")
+        add_button("Gerar Ata", "features", self.atasSignal, button_layout, self.icons, "Gerar nova ata")
         add_button("Consultar API", "api", self.apiSignal, button_layout, self.icons, "Consultar informações da API")
-        add_button("Gerar Ata", "template", self.atasSignal, button_layout, self.icons, "Gerar nova ata")
         add_button("Indicadores", "performance", self.indicadoresSignal, button_layout, self.icons, "Visualizar indicadores")
 
         # Adiciona um espaçamento no final para ajustar o layout
-        button_layout.addStretch()
         return button_layout
 
     def configurar_visualizacao_tabela_tr(self, table_view):

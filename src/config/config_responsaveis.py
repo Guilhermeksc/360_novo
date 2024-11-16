@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
-from src.config.diretorios import *
+from src.config.paths import *
 import sqlite3
 from pathlib import Path
 import pandas as pd
@@ -9,14 +9,16 @@ import os
 import sqlite3
 from src.database.utils.treeview_utils import load_images
 from src.config.diretorios import *
-class AgentesResponsaveisDialog(QDialog):
-    config_updated = pyqtSignal()
+from src.config.database_manager import DatabaseManager
 
+class AgentesResponsaveisWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        # self.database_path = Path(load_config("CONTROLE_DADOS", str(CONTROLE_DADOS)))
-        # self.database_manager = DatabaseManager(self.database_path)
+        self.database_path = CONTROLE_DADOS
+        print(f"Database Path: {self.database_path}")
+
+        self.database_manager = DatabaseManager(self.database_path)
         self.setWindowTitle("Alterar Agentes Responsáveis")
         self.setFixedSize(1100, 600)
         self.layout = QVBoxLayout(self)
@@ -81,36 +83,29 @@ class AgentesResponsaveisDialog(QDialog):
 
     def carregarAgentesResponsaveis(self):
         try:
-            print("Tentando conectar ao banco de dados...")
-            with sqlite3.connect(self.database_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='controle_agentes_responsaveis'")
-                if cursor.fetchone() is None:
-                    raise Exception("A tabela 'controle_agentes_responsaveis' não existe no banco de dados. Configure os Ordenadores de Despesa no Módulo 'Configurações'.")
-
-                sql_query_agentes_responsaveis = "SELECT nome, posto, funcao FROM controle_agentes_responsaveis"
-                cursor.execute(sql_query_agentes_responsaveis)
-                agentes_responsaveis = cursor.fetchall()
-                
-                if agentes_responsaveis:
-                    agentes_responsaveis = [list(row) for row in agentes_responsaveis]  # Converte tuplas em listas
-                    self.table_model = AgentesResponsaveisTableModel(agentes_responsaveis, self.database_path)
-                    self.table_view.setModel(self.table_model)
-                    self.table_view.setItemDelegateForColumn(1, ComboBoxDelegate([
-                        "Capitão de Mar e Guerra (IM)", "Capitão de Fragata (IM)", "Capitão de Corveta (IM)", 
-                        "Capitão-Tenente (IM)", "Primeiro-Tenente (IM)", "Primeiro-Tenente (Rm2-T)", 
-                        "Segundo-Tenente (IM)", "Segundo-Tenente (Rm2-T)"
-                    ], self.table_view))
-                    self.table_view.setItemDelegateForColumn(2, ComboBoxDelegate([
-                        "Ordenador de Despesa", "Ordenador de Despesa Substituto", "Agente Fiscal", 
-                        "Agente Fiscal Substituto", "Gerente de Crédito", "Operador de Dispensa Eletrônica",
-                        "Responsável pela Demanda", "Encarregado da Divisão de x"
-                    ], self.table_view))
-                    self.table_view.setColumnWidth(0, 400)  # Define o tamanho da coluna do índice 0
-                    self.table_view.setColumnWidth(1, 300)  # Define o tamanho da coluna do índice 1
-                    self.table_view.setColumnWidth(2, 300)  # Define o tamanho da coluna do índice 2
-                else:
-                    QMessageBox.information(self, "Informação", "Nenhum agente responsável encontrado.")
+            print("Carregando agentes responsáveis do banco de dados...")
+            query = "SELECT nome, posto, funcao FROM controle_agentes_responsaveis"
+            agentes_responsaveis = self.database_manager.execute_query(query)
+            
+            if agentes_responsaveis:
+                agentes_responsaveis = [list(row) for row in agentes_responsaveis]  # Converte tuplas em listas
+                self.table_model = AgentesResponsaveisTableModel(agentes_responsaveis, self.database_manager)
+                self.table_view.setModel(self.table_model)
+                self.table_view.setItemDelegateForColumn(1, ComboBoxDelegate([
+                    "Capitão de Mar e Guerra (IM)", "Capitão de Fragata (IM)", "Capitão de Corveta (IM)", 
+                    "Capitão-Tenente (IM)", "Primeiro-Tenente (IM)", "Primeiro-Tenente (Rm2-T)", 
+                    "Segundo-Tenente (IM)", "Segundo-Tenente (Rm2-T)"
+                ], self.table_view))
+                self.table_view.setItemDelegateForColumn(2, ComboBoxDelegate([
+                    "Ordenador de Despesa", "Ordenador de Despesa Substituto", "Agente Fiscal", 
+                    "Agente Fiscal Substituto", "Gerente de Crédito", "Operador de Dispensa Eletrônica",
+                    "Responsável pela Demanda", "Encarregado da Divisão de x"
+                ], self.table_view))
+                self.table_view.setColumnWidth(0, 400)
+                self.table_view.setColumnWidth(1, 300)
+                self.table_view.setColumnWidth(2, 300)
+            else:
+                QMessageBox.information(self, "Informação", "Nenhum agente responsável encontrado.")
         except Exception as e:
             QMessageBox.critical(self, "Erro", str(e))
 
@@ -196,6 +191,7 @@ class AgentesResponsaveisDialog(QDialog):
                 QMessageBox.information(self, "Sucesso", "Tabela importada com sucesso!")
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao importar a tabela: {e}")
+            
     def save_and_emit(self):
         self.accept()
         self.config_updated.emit()

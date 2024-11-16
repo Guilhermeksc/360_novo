@@ -83,12 +83,24 @@ class GerarAtaWidget(QWidget):
         header_title.setFont(QFont('Arial', 16, QFont.Weight.Bold))
         layout.addWidget(header_title)
 
-        selecao_layout = QHBoxLayout()  
-        selecao_layout.addWidget(QLabel("Selecione a Licitação:"))
-        
-        # Criação do ComboBox
+        # Layout horizontal para a seleção
+        selecao_layout = QHBoxLayout()
+
+        # Adiciona um espaço flexível antes do QLabel para empurrá-lo para a direita
+        spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        selecao_layout.addItem(spacer)
+
+        # Criação do QLabel
+        selecao_label = QLabel("Selecione a Licitação:")
+        selecao_layout.addWidget(selecao_label)
+        selecao_label.setFont(QFont('Arial', 14))
+
+        # Criação do ComboBox com tamanho fixo de 200
         self.selecao_combobox = QComboBox()
+        self.selecao_combobox.setFixedWidth(200)
         selecao_layout.addWidget(self.selecao_combobox)
+
+        # Adiciona o layout ao layout principal
         layout.addLayout(selecao_layout)
 
         # Carregar tabelas com "result" no nome para o ComboBox
@@ -344,7 +356,7 @@ class GerarAtaWidget(QWidget):
             # Atualiza os valores de registro com os dados obtidos de registro_sicaf e imprime atualizações
             if registro_sicaf:
                 campos_atualizados = {}
-                for campo in ["nome_fantasia", "endereco", "municipio", "uf", "cep", "telefone", "email", "nome"]:
+                for campo in ["nome_fantasia", "endereco", "municipio", "uf", "cep", "telefone", "email", "responsavel_legal"]:
                     if campo in registro_sicaf:
                         registro[campo] = registro_sicaf[campo]
                         campos_atualizados[campo] = registro[campo]
@@ -433,21 +445,21 @@ class GerarAtaWidget(QWidget):
         # Salvar o documento e incluir informações detalhadas
         tpl.save(path_documento)
         self.alterar_documento_criado(path_documento, registro, registro["cnpj"], itens_relacionados)
-    #     self.salvar_email(path_subpasta, context, registro)
+        self.salvar_email(path_subpasta, context, registro)
 
-    # def salvar_email(self, path_subpasta, context, registro):
-    #     nome_arquivo_txt = "E-mail.txt"
-    #     path_arquivo_txt = path_subpasta / nome_arquivo_txt
-    #     with open(path_arquivo_txt, "w") as arquivo_txt:
-    #         texto_email = (f"{registro['email']}\n\n"
-    #                     f"Sr. Representante.\n\n"
-    #                     f"Encaminho em anexo a Vossa Senhoria a ATA {context['contrato']} "
-    #                     f"decorrente do Pregão Eletrônico (SRP) nº {context['num_pregao']}/{context['ano_pregao']}, do Centro "
-    #                     f"de Intendência da Marinha em Brasília (CeIMBra).\n\n"
-    #                     f"Os documentos deverão ser conferidos, assinados e devolvidos a este Comando.\n\n"
-    #                     f"A empresa receberá uma via, devidamente assinada, após a publicação.\n\n"
-    #                     f"Respeitosamente,\n")
-    #         arquivo_txt.write(texto_email)
+    def salvar_email(self, path_subpasta, context, registro):
+        nome_arquivo_txt = "E-mail.txt"
+        path_arquivo_txt = path_subpasta / nome_arquivo_txt
+        with open(path_arquivo_txt, "w") as arquivo_txt:
+            texto_email = (f"{registro['email']}\n\n"
+                        f"Sr. Representante.\n\n"
+                        f"Encaminho em anexo a Vossa Senhoria a ATA {context['contrato']} "
+                        f"decorrente do Pregão Eletrônico (SRP) nº {context['num_pregao']}/{context['ano_pregao']}, do Centro "
+                        f"de Intendência da Marinha em Brasília (CeIMBra).\n\n"
+                        f"Os documentos deverão ser conferidos, assinados e devolvidos a este Comando.\n\n"
+                        f"A empresa receberá uma via, devidamente assinada, após a publicação.\n\n"
+                        f"Respeitosamente,\n")
+            arquivo_txt.write(texto_email)
 
 
     def alterar_documento_criado(self, caminho_documento, registro, cnpj, itens):
@@ -463,7 +475,7 @@ class GerarAtaWidget(QWidget):
                 inserir_relacao_itens(paragraph, itens)
 
         diretorio_documento = Path(caminho_documento).parent
-        caminho_arquivo_excel = diretorio_documento / 'relacao_itens.xlsx'
+        caminho_arquivo_excel = diretorio_documento / 'relacao.xlsx'
         gerar_excel_relacao_itens(itens, caminho_arquivo_excel)
 
         inserir_tabela_do_excel_no_documento(doc, caminho_arquivo_excel)
@@ -471,14 +483,14 @@ class GerarAtaWidget(QWidget):
 
     def inserir_relacao_empresa(self, paragrafo, registro, cnpj):
         dados = {
-            "Razão Social": registro["empresa"],
-            # "Nome Fantasia": registro["nome_fantasia", ""],
-            "CNPJ": registro["cnpj"]
-            # "Endereço": registro["endereco", ""],
-            # "Município-UF": f"{registro['municipio', ""]} - {registro['uf', ""]}",
-            # "CEP": registro["cep", ""],
-            # "Telefone": registro["telefone", ""],
-            # "E-mail": registro["email", ""]
+            "Razão Social": registro.get("empresa", ""),
+            "Nome Fantasia": registro.get("nome_fantasia", ""),
+            "CNPJ": registro.get("cnpj", ""),
+            "Endereço": registro.get("endereco", ""),
+            "Município-UF": f"{registro.get('municipio', '')} - {registro.get('uf', '')}",
+            "CEP": registro.get("cep", ""),
+            "Telefone": registro.get("telefone", ""),
+            "E-mail": registro.get("email", "")
         }
 
         total_itens = len(dados)
@@ -496,7 +508,7 @@ class GerarAtaWidget(QWidget):
             contador += 1
         
         adicione_texto_formatado(paragrafo, "Representada neste ato, por seu representante legal, o(a) Sr(a) ", False)
-        # adicione_texto_formatado(paragrafo, f'{registro["nome"]}.\n', False)
+        adicione_texto_formatado(paragrafo, f'{registro.get("responsavel_legal", "")}.\n', False)
 
     def abrir_pastas_criadas(self):
         # Caminho base onde as pastas foram criadas
@@ -620,8 +632,8 @@ def inserir_relacao_itens(paragrafo, itens):
     adicione_texto_formatado(paragrafo, 'Valor total homologado para a empresa:\n', False)
     adicione_texto_formatado(paragrafo, texto_soma_valor_homologado + '\n', True)
 
-    # Chamar a função para gerar o Excel
-    gerar_excel_relacao_itens(itens)
+    # # Chamar a função para gerar o Excel
+    # gerar_excel_relacao_itens(itens)
     
     return texto_soma_valor_homologado
 
@@ -692,7 +704,6 @@ def gerar_excel_relacao_itens(itens, caminho_arquivo_excel='relacao_itens.xlsx')
 
     wb.save(caminho_arquivo_excel)
 
-
 def format_currency(value):
     """ Função para formatar valores monetários no formato brasileiro. """
     # print(f"Valor original: {value}")  # Print para depuração
@@ -711,7 +722,6 @@ def format_currency(value):
     
     # print(f"Valor formatado: {formatted_value}")  # Print para depuração
     return formatted_value
-
 
 def inserir_tabela_do_excel_no_documento(doc, caminho_arquivo_excel):
     # Carregar a planilha do Excel
@@ -733,7 +743,8 @@ def inserir_tabela_do_excel_no_documento(doc, caminho_arquivo_excel):
                 run = row_cells[0].paragraphs[0].add_run(str(ws.cell(row=i+1, column=1).value))
                 run.font.size = Pt(12)
                 run.font.bold = True
-                shading_elm = parse_xml(r'<w:shd {} w:fill="D3D3D3"/>'.format(nsdecls('w')))
+                run.font.name = "Calibri"
+                shading_elm = parse_xml(r'<w:shd {} w:fill="E3E3E3"/>'.format(nsdecls('w')))
                 row_cells[0]._element.get_or_add_tcPr().append(shading_elm)
 
                 # Segunda linha (mesclada com "Descrição Detalhada:" em negrito e quebras de linha)
@@ -742,16 +753,19 @@ def inserir_tabela_do_excel_no_documento(doc, caminho_arquivo_excel):
                 
                 # Adiciona quebra de linha antes de "Descrição Detalhada:"
                 run = row_cells[0].paragraphs[0].add_run("\n")
-                
+                run.font.name = "Calibri"
+
                 # Adiciona "Descrição Detalhada:" em negrito
                 run = row_cells[0].paragraphs[0].add_run("Descrição Detalhada:")
-                run.font.size = Pt(10)
+                run.font.size = Pt(12)
                 run.font.bold = True
+                run.font.name = "Calibri"
 
                 # Adicionando o texto restante após "Descrição Detalhada:"
                 texto_segunda_linha = str(ws.cell(row=i+2, column=1).value)
                 run = row_cells[0].paragraphs[0].add_run(f" {texto_segunda_linha}")
-                run.font.size = Pt(10)
+                run.font.size = Pt(12)
+                run.font.name = "Calibri"
                 
                 # Adiciona quebra de linha após o texto
                 row_cells[0].paragraphs[0].add_run("\n")
@@ -763,35 +777,34 @@ def inserir_tabela_do_excel_no_documento(doc, caminho_arquivo_excel):
                     if value is not None:
                         texto = str(value)
                         if j == 0 and texto.startswith("UF:"):
-                            # Negrito apenas para "UF:"
                             run = row_cells[j].paragraphs[0].add_run("UF:")
-                            run.font.size = Pt(10)
+                            run.font.size = Pt(12)
                             run.font.bold = True
-                            
-                            # Texto que segue "UF:"
+                            run.font.name = "Calibri"
                             run = row_cells[j].paragraphs[0].add_run(texto[3:])
-                            run.font.size = Pt(10)
+                            run.font.size = Pt(12)
+                            run.font.name = "Calibri"
                         elif j == 1 and texto.startswith("Marca:"):
-                            # Negrito apenas para "Marca:"
                             run = row_cells[j].paragraphs[0].add_run("Marca:")
-                            run.font.size = Pt(10)
+                            run.font.size = Pt(12)
                             run.font.bold = True
-                            
-                            # Texto que segue "Marca:"
+                            run.font.name = "Calibri"
                             run = row_cells[j].paragraphs[0].add_run(texto[6:])
-                            run.font.size = Pt(10)
+                            run.font.size = Pt(12)
+                            run.font.name = "Calibri"
                         elif j == 2 and texto.startswith("Modelo:"):
-                            # Negrito apenas para "Modelo:"
                             run = row_cells[j].paragraphs[0].add_run("Modelo:")
-                            run.font.size = Pt(10)
+                            run.font.size = Pt(12)
                             run.font.bold = True
-                            
-                            # Texto que segue "Modelo:"
+                            run.font.name = "Calibri"
                             run = row_cells[j].paragraphs[0].add_run(texto[7:])
-                            run.font.size = Pt(10)
+                            run.font.size = Pt(12)
+                            run.font.name = "Calibri"
                         else:
                             row_cells[j].text = texto
-                            row_cells[j].paragraphs[0].runs[0].font.size = Pt(10)
+                            run = row_cells[j].paragraphs[0].runs[0]
+                            run.font.size = Pt(12)
+                            run.font.name = "Calibri"
 
                 # Quarta linha (manter formatação padrão)
                 row_cells = table.add_row().cells
@@ -800,42 +813,42 @@ def inserir_tabela_do_excel_no_documento(doc, caminho_arquivo_excel):
                     if value is not None:
                         texto = str(value)
                         if j == 0 and texto.startswith("Quantidade:"):
-                            # Negrito apenas para "Quantidade:"
                             run = row_cells[j].paragraphs[0].add_run("Quantidade:")
-                            run.font.size = Pt(10)
+                            run.font.size = Pt(12)
                             run.font.bold = True
-
-                            # Texto que segue "Quantidade:"
+                            run.font.name = "Calibri"
                             run = row_cells[j].paragraphs[0].add_run(texto[11:])
-                            run.font.size = Pt(10)
-                            row_cells[j].paragraphs[0].add_run("\n")  # Adiciona quebra de linha
+                            run.font.size = Pt(12)
+                            run.font.name = "Calibri"
+                            row_cells[j].paragraphs[0].add_run("\n")
                         elif j == 1 and texto.startswith("Valor Unitário:"):
-                            # Negrito apenas para "Valor Unitário:"
                             run = row_cells[j].paragraphs[0].add_run("Valor Unitário:")
-                            run.font.size = Pt(10)
+                            run.font.size = Pt(12)
                             run.font.bold = True
-
-                            # Texto que segue "Valor Unitário:"
+                            run.font.name = "Calibri"
                             run = row_cells[j].paragraphs[0].add_run(texto[15:])
-                            run.font.size = Pt(10)
-                            row_cells[j].paragraphs[0].add_run("\n")  # Adiciona quebra de linha
+                            run.font.size = Pt(12)
+                            run.font.name = "Calibri"
+                            row_cells[j].paragraphs[0].add_run("\n")
                         elif j == 2 and texto.startswith("Valor Total:"):
-                            # Negrito apenas para "Valor Total:"
                             run = row_cells[j].paragraphs[0].add_run("Valor Total:")
-                            run.font.size = Pt(10)
+                            run.font.size = Pt(12)
                             run.font.bold = True
-
-                            # Texto que segue "Valor Total:"
+                            run.font.name = "Calibri"
                             run = row_cells[j].paragraphs[0].add_run(texto[12:])
-                            run.font.size = Pt(10)
-                            row_cells[j].paragraphs[0].add_run("\n")  # Adiciona quebra de linha
+                            run.font.size = Pt(12)
+                            run.font.name = "Calibri"
+                            row_cells[j].paragraphs[0].add_run("\n")
                         else:
                             row_cells[j].text = texto
-                            row_cells[j].paragraphs[0].runs[0].font.size = Pt(10)
-                            row_cells[j].paragraphs[0].add_run("\n")  # Adiciona quebra de linha
+                            run = row_cells[j].paragraphs[0].runs[0]
+                            run.font.size = Pt(12)
+                            run.font.name = "Calibri"
+                            row_cells[j].paragraphs[0].add_run("\n")
             # Mover a tabela para logo após o parágrafo atual
             move_table_after_paragraph(paragraph, table)
             break
+
 
 def move_table_after_paragraph(paragraph, table):
     # Move a tabela para ficar logo após o parágrafo atual

@@ -57,9 +57,7 @@ class ProcessamentoWidget(QWidget):
         main_layout = QVBoxLayout(self)
         title = QLabel("Processamento de Documentos")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        font = title.font()
-        font.setPointSize(14)
-        title.setFont(font)
+        title.setFont(QFont('Arial', 16, QFont.Weight.Bold))
         main_layout.addWidget(title)
 
         self.progress_bar = QProgressBar()
@@ -81,25 +79,12 @@ class ProcessamentoWidget(QWidget):
     def setup_button_layout(self, main_layout):
         button_layout = QHBoxLayout()
         
-        add_button_func("Iniciar Processamento", "arquivo", self.start_processing, button_layout, self.icon_cache, "Clique para ver instruções")
-        add_button_func("Atualizar", "arquivo", self.update_pdf_count, button_layout, self.icon_cache, "Clique para ver instruções")
-        add_button_func("Abrir Pasta PDF", "arquivo", self.abrir_pasta_pdf, button_layout, self.icon_cache, "Clique para ver instruções")
-
-
-        definir_pasta_button = QPushButton("Definir Pasta PDF Padrão")
-        definir_pasta_button.clicked.connect(self.definir_pasta_pdf_padrao)
-        button_layout.addWidget(definir_pasta_button)
-
-        # Define registro_sicaf_button como um atributo de instância
-        self.registro_sicaf_button = QPushButton("Registro SICAF")
-        self.registro_sicaf_button.clicked.connect(self.abrir_registro_sicaf)
-        button_layout.addWidget(self.registro_sicaf_button)
-
-        # Botão "Abrir Resultados"
-        self.open_results_button = QPushButton("Abrir Resultados")
-        self.open_results_button.clicked.connect(self.open_results_treeview)
-        self.open_results_button.setEnabled(False)
-        button_layout.addWidget(self.open_results_button)
+        add_button_func("Iniciar Processamento", "star", self.start_processing, button_layout, self.icon_cache, "Clique para ver instruções")
+        add_button_func("Atualizar", "refresh", self.update_pdf_count, button_layout, self.icon_cache, "Clique para ver instruções")
+        add_button_func("Abrir Pasta PDF", "add-folder", self.abrir_pasta_pdf, button_layout, self.icon_cache, "Clique para ver instruções")
+        add_button_func("Redefinir Pasta PDF", "add-folder", self.definir_pasta_pdf_padrao, button_layout, self.icon_cache, "Clique para ver instruções")
+        add_button_func("SICAF", "layers", self.abrir_registro_sicaf, button_layout, self.icon_cache, "Clique para ver instruções")
+        add_button_func("Resultados", "result", self.open_results_treeview, button_layout, self.icon_cache, "Clique para ver instruções")
 
         main_layout.addLayout(button_layout)
 
@@ -155,8 +140,8 @@ class ProcessamentoWidget(QWidget):
         self.homologacao_dataframe = save_to_dataframe(extracted_data)
         # Salva os dados do DataFrame no modelo
         self.atualizar_ou_inserir_controle_homologacao()
-        # Atualiza o botão de registro SICAF
-        self.update_registro_sicaf_button()
+        # # Atualiza o botão de registro SICAF
+        # self.update_registro_sicaf_button()
 
     def atualizar_ou_inserir_controle_homologacao(self): 
         if self.homologacao_dataframe is None or self.homologacao_dataframe.empty:
@@ -311,13 +296,14 @@ class ProcessamentoWidget(QWidget):
             model=self.model,
             icons=self.icon_cache,
             database_ata_manager=self.database_ata_manager,
+            update_context_callback=self.update_context,
             parent=self
         )
         dialog.exec()
 
-    def update_registro_sicaf_button(self):
-        # Verifica a existência do DataFrame para habilitar o botão
-        self.registro_sicaf_button.setEnabled(self.homologacao_dataframe is not None)
+    # def update_registro_sicaf_button(self):
+    #     # Verifica a existência do DataFrame para habilitar o botão
+    #     self.registro_sicaf_button.setEnabled(self.homologacao_dataframe is not None)
 
 class RegistroSICAFDialog(QDialog):
     def __init__(self, homologacao_dataframe, pdf_dir, model, icons, database_ata_manager, parent=None, update_context_callback=None):
@@ -381,32 +367,76 @@ class RegistroSICAFDialog(QDialog):
         if not self.sicaf_dir.exists():
             QMessageBox.warning(self, "Erro", "A pasta SICAF não existe.")
             return
-
-        self.update_context("Iniciando o processamento dos arquivos SICAF...")
+        
+        if self.update_context:  # Verifica se `update_context` não é None
+            self.update_context("Iniciando o processamento dos arquivos SICAF...")
         
         # Cria uma instância de WorkerSICAF e conecta os sinais
         self.worker = WorkerSICAF(self.sicaf_dir)
         self.worker.processing_complete.connect(self.on_processing_complete)
         
         self.worker.update_context_signal.connect(self.update_context)  # Conecta o sinal ao método de atualização de contexto
-        self.worker.progress_signal.connect(self.progress_bar.setValue)
 
         # Inicia o Worker
         self.worker.start()
 
     def on_processing_complete(self, dataframes):
-        if dataframes:
-            self.current_dataframe = pd.concat(dataframes, ignore_index=True)
-            print("Dados extraídos de todos os arquivos:")
-            print(self.current_dataframe)
+        """Salva os dados extraídos no banco de dados 'registro_sicaf'."""
+        for df in dataframes:
+            for _, row in df.iterrows():
+                # Extrai as colunas para o registro
+                empresa = row.get('empresa')
+                cnpj = row.get('cnpj')
+                nome_fantasia = row.get('nome_fantasia')
+                endereco = row.get('endereco')
+                cep = row.get('cep')
+                municipio = row.get('municipio')
+                telefone = row.get('telefone')
+                email = row.get('email')
+                responsavel_legal = row.get('nome')  # Assumindo que o CPF é do responsável legal
 
-            # Salvar o DataFrame na tabela 'sicaf_table_teste'
-            self.save_data('sicaf_table_teste')
+                # Verifica se o CNPJ já existe na tabela
+                check_query = "SELECT 1 FROM registro_sicaf WHERE cnpj = ?"
+                exists = self.database_ata_manager.execute_query(check_query, (cnpj,))
 
-            # Emitir o sinal com os novos dados, se necessário
-            self.data_extracted.emit(self.current_dataframe)
-        else:
-            print("Nenhum dado foi extraído de nenhum dos arquivos.")
+                # Se o CNPJ já existe, atualiza os dados, caso contrário, insere um novo registro
+                if exists:
+                    update_query = """
+                    UPDATE registro_sicaf SET 
+                        empresa = ?, 
+                        nome_fantasia = ?, 
+                        endereco = ?, 
+                        cep = ?, 
+                        municipio = ?, 
+                        telefone = ?, 
+                        email = ?, 
+                        responsavel_legal = ?
+                    WHERE cnpj = ?
+                    """
+                    params = (empresa, nome_fantasia, endereco, cep, municipio, telefone, email, responsavel_legal, cnpj)
+                    try:
+                        self.database_ata_manager.execute_update(update_query, params)
+                        print(f"Registro de {empresa} atualizado com sucesso.")
+                    except Exception as e:
+                        logging.error(f"Erro ao atualizar o registro de {empresa}: {e}")
+                        QMessageBox.warning(self, "Erro", f"Erro ao atualizar o registro de {empresa}: {e}")
+                else:
+                    insert_query = """
+                    INSERT INTO registro_sicaf (empresa, cnpj, nome_fantasia, endereco, cep, municipio, telefone, email, responsavel_legal)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """
+                    params = (empresa, cnpj, nome_fantasia, endereco, cep, municipio, telefone, email, responsavel_legal)
+                    try:
+                        self.database_ata_manager.execute_query(insert_query, params)
+                        print(f"Registro de {empresa} inserido com sucesso.")
+                    except Exception as e:
+                        logging.error(f"Erro ao inserir o registro de {empresa}: {e}")
+                        QMessageBox.warning(self, "Erro", f"Erro ao inserir o registro de {empresa}: {e}")
+        
+        # Mensagem final de conclusão do processamento
+        QMessageBox.information(self, "Processamento Completo", "Todos os registros foram processados e salvos no banco de dados com sucesso.")
+        print("Processamento SICAF concluído e registros salvos no banco de dados.")
+
 
     def create_button(self, text, icon, callback, tooltip_text, icon_size=QSize(30, 30), button_size=QSize(120, 30)):
         """Cria um botão personalizado com texto, ícone, callback e tooltip."""
@@ -530,6 +560,7 @@ class RegistroSICAFDialog(QDialog):
         CREATE TABLE IF NOT EXISTS registro_sicaf (
             empresa TEXT,
             cnpj TEXT PRIMARY KEY,
+            nome_fantasia,
             endereco TEXT,
             cep TEXT,
             municipio TEXT,

@@ -510,11 +510,7 @@ class ModeloTreeview:
             parent_item.appendRow(item_info)
         else:
             # Processo normal para 'Adjudicado e Homologado'
-            if not empresa_items[parent_key]['details_added']:
-                self.adicionar_detalhes_empresa(row, parent_item)
-                empresa_items[parent_key]['items_container'].setText("")  # Limpa o texto se necessário
-                parent_item.appendRow(empresa_items[parent_key]['items_container'])
-                empresa_items[parent_key]['details_added'] = True
+            pass
 
             # Adicionando itens específicos da licitação
             self.adicionar_subitens_detalhados(row, empresa_items[parent_key]['items_container'])
@@ -612,13 +608,17 @@ class WorkerSICAF(QThread):
 
         for index, pdf_file in enumerate(pdf_files):
             text = self.process_single_pdf(pdf_file)
-            print(f"Texto extraído do arquivo {pdf_file.name}:\n{text}\n{'-'*80}")
             if text:
                 # Extrair dados usando as expressões regulares
                 df_sicaf = extrair_dados_sicaf(text)
                 df_responsavel = extrair_dados_responsavel(text)
-
-                # Verificar se pelo menos um dos DataFrames não está vazio
+                
+                print(f"Arquivo PDF: {pdf_file.name}")
+                print("DataFrame SICAF extraído:")
+                print(df_sicaf)
+                print("DataFrame Responsável extraído:")
+                print(df_responsavel)
+                
                 if not df_sicaf.empty or not df_responsavel.empty:
                     # Combinar os DataFrames
                     df_combined = pd.concat([df_sicaf, df_responsavel], axis=1)
@@ -637,12 +637,10 @@ class WorkerSICAF(QThread):
 
             progress = int((index + 1) / total_files * 100)
             self.progress_signal.emit(progress)
-            QThread.msleep(100)  # Simulando tempo de processamento
+            QThread.msleep(1)  # Simulando tempo de processamento
 
         # Emitir o sinal com a lista de DataFrames
         self.processing_complete.emit(dataframes)
-
-
 
     def process_single_pdf(self, pdf_file):
         try:
@@ -653,72 +651,75 @@ class WorkerSICAF(QThread):
                     if page_text:
                         text += page_text + "\n"
                     else:
-                        self.update_context_signal.emit(
-                            f"Aviso: Página de {pdf_file.name} não contém texto extraível."
-                        )
+                        warning_message = f"Aviso: Página de {pdf_file.name} não contém texto extraível."
+                        self.update_context_signal.emit(warning_message)
+                        print(warning_message)
                 return text
         except Exception as e:
-            self.update_context_signal.emit(f"Erro ao processar {pdf_file.name}: {e}")
+            error_message = f"Erro ao processar {pdf_file.name}: {e}"
+            self.update_context_signal.emit(error_message)
+            print(error_message)
             return None
 
 
-def extrair_dados_sicaf(text):
-    # Definir a expressão regular para extração dos dados
-    dados_sicaf = (
-        r"CNPJ:\s*(?P<cnpj>[\d./-]+)\s*"
-        r"(DUNS®:\s*(?P<duns>[\d]+)\s*)?"
-        r"Razão Social:\s*(?P<empresa>.*?)\s*"
-        r"Nome Fantasia:\s*(?P<nome_fantasia>.*?)\s*"
-        r"Situação do Fornecedor:\s*(?P<situacao_cadastro>.*?)\s*"
-        r"Data de Vencimento do Cadastro:\s*(?P<data_vencimento>\d{2}/\d{2}/\d{4})\s*"
-        r"(Data de Emissão do Certificado:\s*(?P<data_emissao>\d{2}/\d{2}/\d{4})\s*)?"
-        r"(Data de Validade do Certificado:\s*(?P<data_validade>\d{2}/\d{2}/\d{4})\s*)?"
-        r"(Data de Última Atualização:\s*(?P<data_atualizacao>\d{2}/\d{2}/\d{4})\s*)?"
-        r"Dados do Nível.*?Dados para Contato\s*"
-        r"CEP:\s*(?P<cep>[\d.-]+)\s*"
-        r"Endereço:\s*(?P<endereco>.*?)\s*"
-        r"Município / UF:\s*(?P<municipio>.*?)\s*/\s*(?P<uf>.*?)\s*"
-        r"Telefone:\s*(?P<telefone>.*?)\s*"
-        r"E-mail:\s*(?P<email>.*?)\s*"
-        r"Dados do Responsável Legal CPF:\s*(?P<cpf>[\d.-]+)"
-    )
-
-    # Procurar todos os matches no texto fornecido
-    matches = re.finditer(dados_sicaf, text, re.DOTALL)
-
-    # Extrair os dados e armazenar em uma lista de dicionários
-    extracted_data = [match.groupdict() for match in matches]
-
-    # Criar um DataFrame com os dados extraídos
-    df = pd.DataFrame(extracted_data)
-
-    return df
-
-# def extrair_dados_sicaf(texto: str) -> pd.DataFrame:
+# def extrair_dados_sicaf(text):
+#     # Definir a expressão regular para extração dos dados
 #     dados_sicaf = (
 #         r"CNPJ:\s*(?P<cnpj>[\d./-]+)\s*"
-#         r"(?:DUNS®:\s*(?P<duns>[\d]+)\s*)?"
+#         r"(DUNS®:\s*(?P<duns>[\d]+)\s*)?"
 #         r"Razão Social:\s*(?P<empresa>.*?)\s*"
 #         r"Nome Fantasia:\s*(?P<nome_fantasia>.*?)\s*"
 #         r"Situação do Fornecedor:\s*(?P<situacao_cadastro>.*?)\s*"
 #         r"Data de Vencimento do Cadastro:\s*(?P<data_vencimento>\d{2}/\d{2}/\d{4})\s*"
+#         r"(Data de Emissão do Certificado:\s*(?P<data_emissao>\d{2}/\d{2}/\d{4})\s*)?"
+#         r"(Data de Validade do Certificado:\s*(?P<data_validade>\d{2}/\d{2}/\d{4})\s*)?"
+#         r"(Data de Última Atualização:\s*(?P<data_atualizacao>\d{2}/\d{2}/\d{4})\s*)?"
 #         r"Dados do Nível.*?Dados para Contato\s*"
 #         r"CEP:\s*(?P<cep>[\d.-]+)\s*"
 #         r"Endereço:\s*(?P<endereco>.*?)\s*"
-#         r"Município\s*/\s*UF:\s*(?P<municipio>.*?)\s*/\s*(?P<uf>.*?)\s*"
+#         r"Município / UF:\s*(?P<municipio>.*?)\s*/\s*(?P<uf>.*?)\s*"
 #         r"Telefone:\s*(?P<telefone>.*?)\s*"
 #         r"E-mail:\s*(?P<email>.*?)\s*"
-#         r"Dados do Responsável Legal"
+#         r"Dados do Responsável Legal CPF:\s*(?P<cpf>[\d.-]+)"
 #     )
 
-#     match = re.search(dados_sicaf, texto, re.S)
-#     if not match:
-#         return pd.DataFrame()  # Retorna um DataFrame vazio
+#     # Procurar todos os matches no texto fornecido
+#     matches = re.finditer(dados_sicaf, text, re.DOTALL)
 
-#     data = {key: [value.strip()] if value else [None] for key, value in match.groupdict().items()}
+#     # Extrair os dados e armazenar em uma lista de dicionários
+#     extracted_data = [match.groupdict() for match in matches]
 
-#     df = pd.DataFrame(data)
+#     # Criar um DataFrame com os dados extraídos
+#     df = pd.DataFrame(extracted_data)
+#     print("Dados extraídos do texto:")
+#     print(df)
 #     return df
+
+def extrair_dados_sicaf(texto: str) -> pd.DataFrame:
+    dados_sicaf = (
+        r"CNPJ:\s*(?P<cnpj>[\d./-]+)\s*"
+        r"(?:DUNS®:\s*(?P<duns>[\d]+)\s*)?"
+        r"Razão Social:\s*(?P<empresa>.*?)\s*"
+        r"Nome Fantasia:\s*(?P<nome_fantasia>.*?)\s*"
+        r"Situação do Fornecedor:\s*(?P<situacao_cadastro>.*?)\s*"
+        r"Data de Vencimento do Cadastro:\s*(?P<data_vencimento>\d{2}/\d{2}/\d{4})\s*"
+        r"Dados do Nível.*?Dados para Contato\s*"
+        r"CEP:\s*(?P<cep>[\d.-]+)\s*"
+        r"Endereço:\s*(?P<endereco>.*?)\s*"
+        r"Município\s*/\s*UF:\s*(?P<municipio>.*?)\s*/\s*(?P<uf>.*?)\s*"
+        r"Telefone:\s*(?P<telefone>.*?)\s*"
+        r"E-mail:\s*(?P<email>.*?)\s*"
+        r"Dados do Responsável Legal"
+    )
+
+    match = re.search(dados_sicaf, texto, re.S)
+    if not match:
+        return pd.DataFrame()  # Retorna um DataFrame vazio
+
+    data = {key: [value.strip()] if value else [None] for key, value in match.groupdict().items()}
+
+    df = pd.DataFrame(data)
+    return df
 
 def extrair_dados_responsavel(texto: str) -> pd.DataFrame:
     dados_responsavel_sicaf = (

@@ -7,6 +7,59 @@ from src.config.config_widget import ConfigManager
 from src.modules.widgets import *
 from src.config.dialogs import * 
 
+# class MainWindow(QMainWindow):
+#     def __init__(self, application):
+#         super().__init__()
+#         self.app = application
+#         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)  # Remove a barra de título nativa
+#         self.setFixedSize(800, 600)  # Define o tamanho fixo da janela
+#         self.init_ui()
+
+#     def init_ui(self):
+#         # Cria a barra de título personalizada
+#         self.title_bar = QWidget(self)
+#         self.title_bar.setFixedHeight(40)
+#         self.title_bar.setStyleSheet("background-color: black;")
+
+#         # Botão de fechar
+#         self.close_button = QPushButton("X", self.title_bar)
+#         self.close_button.setStyleSheet("""
+#             QPushButton {
+#                 background-color: red;
+#                 color: white;
+#                 border: none;
+#                 font-weight: bold;
+#             }
+#             QPushButton:hover {
+#                 background-color: darkred;
+#             }
+#         """)
+#         self.close_button.setFixedSize(40, 40)
+#         self.close_button.move(self.width() - 40, 0)
+#         self.close_button.clicked.connect(self.close)
+
+#         # Rótulo para o título
+#         self.title_label = QLabel("Licitação 360", self.title_bar)
+#         self.title_label.setStyleSheet("color: white; font-size: 16px;")
+#         self.title_label.move(10, 10)
+
+#         # Layout principal
+#         self.central_widget = QWidget(self)
+#         self.setCentralWidget(self.central_widget)
+#         layout = QVBoxLayout(self.central_widget)
+#         layout.setContentsMargins(0, 0, 0, 0)
+#         layout.addWidget(self.title_bar)
+#         layout.addStretch()
+
+#     def mousePressEvent(self, event):
+#         if event.button() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
+#             self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+#             event.accept()
+
+#     def mouseMoveEvent(self, event):
+#         if event.buttons() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
+#             self.move(event.globalPosition().toPoint() - self.drag_position)
+#             event.accept()
 class MainWindow(QMainWindow):
     def __init__(self, application):
         super().__init__()
@@ -347,9 +400,6 @@ class MainWindow(QMainWindow):
 
     def show_configurar_database_dialog(self):
         ConfigurarDatabaseDialog(self).exec()
-
-    def show_agentes_responsaveis_dialog(self):
-        AgentesResponsaveisDialog(self).exec()
 
     def show_organizacoes_dialog(self):
         OrganizacoesDialog(self).exec()
