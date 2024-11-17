@@ -117,5 +117,7 @@ def load_icons():
         "result": load_icon("result.png"),
         "add-folder": load_icon("add-folder.png"),
         "alert": load_icon("alert.png"),
+        "tr": load_icon("star.png"),
+        "homolog": load_icon("result.png"),
 
                 }

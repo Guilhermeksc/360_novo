@@ -5,6 +5,8 @@ from src.modules.utils.add_button import add_button
 from src.modules.atas_novo.widgets.importar_tr import TermoReferenciaWidget
 from src.modules.atas_novo.widgets.instrucoes import InstructionWidget
 from src.modules.atas_novo.widgets.progresso_homolog import ProcessamentoWidget
+from src.modules.atas_novo.widgets.consultar_api import ConsultarAPI
+from src.modules.atas_novo.widgets.indicadores import IndicadoresWidget
 from src.modules.atas_novo.widgets.atas import GerarAtaWidget
 from pathlib import Path
 from src.config.paths import PDF_DIR
@@ -53,7 +55,9 @@ class GerarAtasView(QMainWindow):
 
     def init_content_widgets(self):
         # Criação dos widgets de conteúdo e adição ao QStackedWidget
-        self.instrucoes_widget = InstructionWidget(self)
+        self.instrucoes_widget = InstructionWidget(self.icons, self)
+
+
         self.content_area.addWidget(self.instrucoes_widget)
 
         self.tr_widget = TermoReferenciaWidget(self, self.icons)
@@ -68,7 +72,11 @@ class GerarAtasView(QMainWindow):
         )
         self.content_area.addWidget(self.homolog_widget)
 
-        self.api_widget = QLabel("Conteúdo de Consulta API")
+        self.api_widget = ConsultarAPI(
+            icons=self.icons, 
+            database_ata_manager=self.database_ata_manager, 
+            main_window=self
+            )  
         self.content_area.addWidget(self.api_widget)
 
         self.atas_widget = GerarAtaWidget(
@@ -77,7 +85,10 @@ class GerarAtasView(QMainWindow):
             main_window=self)
         self.content_area.addWidget(self.atas_widget)
 
-        self.indicadores_widget = QLabel("Conteúdo dos Indicadores")
+        self.indicadores_widget = IndicadoresWidget(
+            icons=self.icons, 
+            database_ata_manager=self.database_ata_manager, 
+            main_window=self)
         self.content_area.addWidget(self.indicadores_widget)
 
     def create_menu_layout(self):

@@ -342,7 +342,7 @@ class DatabaseATASManager:
             conn.commit()       
 
     def criar_tabela_itens_pregao(self, numeroCompra, anoCompra, unidadeOrgaoCodigoUnidade):
-        table_name = f"{numeroCompra}-{anoCompra}-{unidadeOrgaoCodigoUnidade}-HomologAPI"
+        table_name = f"result_API_{numeroCompra}_{anoCompra}_{unidadeOrgaoCodigoUnidade}"
         column_order = [
             'grupo', 'item PRIMARY KEY', 'catalogo', 'descricao', 'unidade', 'quantidade', 'valor_estimado', 
             'valor_homologado_item_unitario', 'percentual_desconto', 'valor_estimado_total_do_item', 
@@ -360,7 +360,7 @@ class DatabaseATASManager:
             conn.commit()      
 
     def popular_db_consulta_itens_api(self, resultados_completos, data_informacoes, numeroCompra, anoCompra, unidadeOrgaoCodigoUnidade):
-        table_name = f"{numeroCompra}-{anoCompra}-{unidadeOrgaoCodigoUnidade}-HomologAPI"
+        table_name = f"result_API_{numeroCompra}_{anoCompra}_{unidadeOrgaoCodigoUnidade}"
         
         # Informações gerais de `data_informacoes` que serão inseridas com cada item
         data_informacoes_to_insert = {
@@ -371,19 +371,22 @@ class DatabaseATASManager:
             "objeto": data_informacoes.get("objetoCompra"),
             "srp": data_informacoes.get("srp")
         }
-
         # Para cada item em `resultados_completos`, insere ou atualiza os dados no banco de dados
         for item in resultados_completos:
             quantidade = item.get("quantidadeHomologada", 0) or 0
             valor_estimado = item.get("valorUnitarioEstimado", 0) or 0
-            valor_homologado_item_unitario = item.get("valorUnitarioHomologado", 0) or 0
-            
+            valor_homologado_item_unitario = item.get("valorUnitarioHomologado")
+
             # Cálculos necessários
-            percentual_desconto = (
-                ((valor_estimado - valor_homologado_item_unitario) / valor_estimado * 100) 
-                if valor_estimado else 0
-            )
-            valor_homologado_total_item = quantidade * valor_homologado_item_unitario
+            if valor_estimado and valor_homologado_item_unitario is not None:
+                percentual_desconto = (
+                    ((valor_estimado - valor_homologado_item_unitario) / valor_estimado * 100)
+                    if valor_estimado else None
+                )
+            else:
+                percentual_desconto = None  # Define como NULL se não houver valor homologado
+
+            valor_homologado_total_item = quantidade * (valor_homologado_item_unitario or 0)
             valor_estimado_total_do_item = quantidade * valor_estimado
 
             # Determina a situação com base no valor booleano

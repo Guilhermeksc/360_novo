@@ -20,6 +20,7 @@ CONFIG_FILE = BASE_DIR / "config.json"
 PRE_DEFINICOES_JSON = BASE_DIR / "pre_definicioes.json"
 AGENTES_RESPONSAVEIS_FILE = BASE_DIR / "agentes_responsaveis.json"
 ORGANIZACOES_FILE = BASE_DIR / "organizacoes.json"
+CONFIG_API_FILE = BASE_DIR / "config_api.json"
 
 # Resources
 RESOURCES_DIR = BASE_DIR / "resources"

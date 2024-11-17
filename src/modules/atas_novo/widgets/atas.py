@@ -12,11 +12,14 @@ from openpyxl import Workbook, load_workbook
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
 from openpyxl.styles import Font, PatternFill
-from src.config.paths import PRE_DEFINICOES_JSON, TEMPLATE_PATH
+from src.config.paths import PRE_DEFINICOES_JSON, TEMPLATE_PATH, ORGANIZACOES_FILE, AGENTES_RESPONSAVEIS_FILE
 import json
 from src.modules.utils.add_button import add_button_func
 import os
 from PyQt6.QtSql import QSqlQuery
+
+from src.modules.utils.linha_layout import linha_divisoria_layout
+
 DEFAULT_CONFIG = {
     "ultimo_cnpj": "0005055505050",
     "ultimo_ano": "2024",
@@ -37,6 +40,8 @@ class GerarAtaWidget(QWidget):
         
         # Carrega configurações do JSON
         self.config_data = self.carregar_configuracoes(PRE_DEFINICOES_JSON)
+        self.organizacoes_file = ORGANIZACOES_FILE 
+        self.ordenador_despesas_file = AGENTES_RESPONSAVEIS_FILE 
 
         self.setup_ui()
 
@@ -97,7 +102,8 @@ class GerarAtaWidget(QWidget):
 
         # Criação do ComboBox com tamanho fixo de 200
         self.selecao_combobox = QComboBox()
-        self.selecao_combobox.setFixedWidth(200)
+        self.selecao_combobox.setFixedWidth(350)
+        self.selecao_combobox.setFont(QFont('Arial', 12))
         selecao_layout.addWidget(self.selecao_combobox)
 
         # Adiciona o layout ao layout principal
@@ -106,81 +112,167 @@ class GerarAtaWidget(QWidget):
         # Carregar tabelas com "result" no nome para o ComboBox
         self.carregar_tabelas_result()
 
+        cabecalho_label = QLabel("Defina o cabeçalho:")
+        layout.addWidget(cabecalho_label)
+        cabecalho_label.setFont(QFont('Arial', 14))
+
         # Editor de texto para o cabeçalho
         self.header_editor = QTextEdit()
         initial_text = self.config_data.get("initial_text", "")
+        self.header_editor.setFont(QFont('Arial', 12))      
         self.header_editor.setText(initial_text)
         layout.addWidget(self.header_editor)
 
         # Combobox de cidades com botão Alterar Pre-definições
         cidade_layout = QHBoxLayout()
+        # Adiciona um espaço flexível antes do QLabel para empurrá-lo para a direita
+        spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        cidade_layout.addItem(spacer)
+
         cidades_label = QLabel("Selecione a Cidade:")
         cidade_layout.addWidget(cidades_label)
-        
+        cidades_label.setFont(QFont('Arial', 14))
+
         self.cidades_combobox = QComboBox()
-        cidades = self.config_data.get("cidades_combobox", [])
-        self.cidades_combobox.addItems(cidades)
+        self.cidades_combobox.setFixedWidth(350)
+        self.cidades_combobox.setFont(QFont('Arial', 12))
         cidade_layout.addWidget(self.cidades_combobox)
         
-        btn_cidade = QPushButton("Alterar Pre-definições")
-        btn_cidade.clicked.connect(lambda: self.abrir_edicao("cidades_combobox"))
-        cidade_layout.addWidget(btn_cidade)
         layout.addLayout(cidade_layout)
         
         # Combobox de organizações com botão Alterar Pre-definições
         org_layout = QHBoxLayout()
+        spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        org_layout.addItem(spacer)        
         org_label = QLabel("Selecione a Organização Gerenciadora:")
         org_layout.addWidget(org_label)
-        
+        org_label.setFont(QFont('Arial', 14))
+                
         self.org_combobox = QComboBox()
-        organizations = self.config_data.get("org_combobox", [])
-        self.org_combobox.addItems(organizations)
+        self.org_combobox.setFixedWidth(350)
+        self.org_combobox.setFont(QFont('Arial', 12))        
         org_layout.addWidget(self.org_combobox)
         
-        btn_org = QPushButton("Alterar Pre-definições")
-        btn_org.clicked.connect(lambda: self.abrir_edicao("org_combobox"))
-        org_layout.addWidget(btn_org)
         layout.addLayout(org_layout)
 
         # Combobox de ordenador de despesas com botão Alterar Pre-definições
         despesa_layout = QHBoxLayout()
+        spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        despesa_layout.addItem(spacer)                
         despesa_label = QLabel("Selecione o Ordenador de Despesas:")
         despesa_layout.addWidget(despesa_label)
-        
+        despesa_label.setFont(QFont('Arial', 14))
+
         self.ordenador_despesa_combobox = QComboBox()
-        ordenador_despesas = self.config_data.get("ordenador_despesas", [])
-        self.ordenador_despesa_combobox.addItems(ordenador_despesas)
+        self.ordenador_despesa_combobox.setFixedWidth(350)
+        self.ordenador_despesa_combobox.setFixedHeight(65)
+        self.ordenador_despesa_combobox.setFont(QFont('Arial', 12))           
         despesa_layout.addWidget(self.ordenador_despesa_combobox)
         
-        btn_despesa = QPushButton("Alterar Pre-definições")
-        btn_despesa.clicked.connect(lambda: self.abrir_edicao("ordenador_despesas"))
-        despesa_layout.addWidget(btn_despesa)
         layout.addLayout(despesa_layout)
 
         # Layout horizontal para número de controle
         numero_layout = QHBoxLayout()
-        
+        linha_divisoria, spacer_baixo_linha = linha_divisoria_layout()
+        numero_layout.addWidget(linha_divisoria)
+        numero_layout.addSpacerItem(spacer_baixo_linha)        
         # Rótulo e campo para número de controle
-        rotulo = QLabel("Digite o próximo Número de Controle de Atas/Contratos:")
+        rotulo = QLabel("Digite o próximo Número de Controle:")
+        despesa_layout.addWidget(rotulo)
+        rotulo.setFont(QFont('Arial', 14))
+                
         numero_layout.addWidget(rotulo)
         
         self.numero_controle_lineedit = QLineEdit()
+        self.numero_controle_lineedit.setFixedWidth(200)
+        self.numero_controle_lineedit.setFont(QFont('Arial', 12))    
+
         numero_layout.addWidget(self.numero_controle_lineedit)
+        # Adiciona um espaço flexível antes do QLabel para empurrá-lo para a direita
+        spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        layout.addItem(spacer)
         
         # Adiciona o layout horizontal ao layout principal
         layout.addLayout(numero_layout)
+
+        spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        layout.addItem(spacer)
 
         # Layout horizontal para centralizar o botão
         button_layout = QHBoxLayout()
 
         add_button_func("Gerar Ata", "processing", self.gerar_ata, button_layout, self.icons, "Clique para gerar a ata")
 
-        # button_layout.addStretch()  # Espaço flexível à esquerda
-        # button_layout.addStretch()  # Espaço flexível à direita
-
         # Adiciona o layout de botão centralizado ao layout principal
         layout.addLayout(button_layout)
-        layout.addStretch()  # Espaço flexível no final
+        layout.addStretch()
+        
+        self.carregar_dados_comboboxes()
+        self.carregar_dados_ordenador_despesa_comboboxes()
+        
+    def carregar_dados_comboboxes(self):
+        try:
+            # Verifica se o arquivo existe
+            if not self.organizacoes_file.is_file():
+                raise FileNotFoundError(f"Arquivo {self.organizacoes_file} não encontrado.")
+
+            # Carrega o JSON
+            with open(self.organizacoes_file, "r", encoding="utf-8") as file:
+                data = json.load(file)
+
+            # Extração de dados únicos
+            organizacoes = data.get("organização_militar", [])
+            cidades = {org.get("Cidade") for org in organizacoes if "Cidade" in org}
+            organizacoes_formatadas = {f"{org.get('Nome')} ({org.get('Sigla')})" 
+                                       for org in organizacoes if "Nome" in org and "Sigla" in org}
+
+            # Adiciona os valores aos comboboxes
+            if cidades:
+                self.cidades_combobox.addItems(sorted(cidades))
+            else:
+                self.cidades_combobox.addItem("Adicione a cidade nas configurações.")
+
+            if organizacoes_formatadas:
+                self.org_combobox.addItems(sorted(organizacoes_formatadas))
+            else:
+                self.org_combobox.addItem("Adicione a organização nas configurações.")
+        
+        except (json.JSONDecodeError, KeyError) as e:
+            QMessageBox.critical(self, "Erro", f"Erro ao carregar dados do arquivo: {e}")
+            self.cidades_combobox.addItem("Adicione a cidade nas configurações.")
+            self.org_combobox.addItem("Adicione a organização nas configurações.")
+        except FileNotFoundError as e:
+            QMessageBox.warning(self, "Aviso", str(e))
+            self.cidades_combobox.addItem("Adicione a cidade nas configurações.")
+            self.org_combobox.addItem("Adicione a organização nas configurações.")
+
+    def carregar_dados_ordenador_despesa_comboboxes(self):
+        try:
+            # Verifica se o arquivo existe
+            if not self.ordenador_despesas_file.is_file():
+                raise FileNotFoundError(f"Arquivo {self.ordenador_despesas_file} não encontrado.")
+
+            # Carrega o JSON
+            with open(self.ordenador_despesas_file, "r", encoding="utf-8") as file:
+                data = json.load(file)
+
+            # Extração de dados únicos
+            ordenador_despesa = data.get("ordenador_de_despesa", [])
+            ordenador_despesas_formatado = {f"{od.get('Nome')}\n{od.get('Posto')}\n{od.get('Funcao')}" 
+                                       for od in ordenador_despesa if "Nome" in od and "Posto" in od and "Funcao" in od}
+
+            # Adiciona os valores aos comboboxes
+            if ordenador_despesas_formatado:
+                self.ordenador_despesa_combobox.addItems(sorted(ordenador_despesas_formatado))
+            else:
+                self.ordenador_despesa_combobox.addItem("Adicione o Ordenador de Despesa nas configurações.")
+        
+        except (json.JSONDecodeError, KeyError) as e:
+            QMessageBox.critical(self, "Erro", f"Erro ao carregar dados do arquivo: {e}")
+            self.ordenador_despesa_combobox.addItem("Adicione o Ordenador de Despesa nas configurações.")
+        except FileNotFoundError as e:
+            QMessageBox.warning(self, "Aviso", str(e))
+            self.ordenador_despesa_combobox.addItem("Adicione o Ordenador de Despesa nas configurações.")
 
     def carregar_tabelas_result(self):
         # Obtém tabelas cujo nome começa com "result"
@@ -212,7 +304,6 @@ class GerarAtaWidget(QWidget):
             # Conecta a seleção do ComboBox para carregar a tabela selecionada
             self.selecao_combobox.currentIndexChanged.connect(self.atualizar_dataframe_selecionado)
 
-
     def atualizar_dataframe_selecionado(self):
         # Obter o nome da tabela selecionada
         tabela = self.selecao_combobox.currentText()
@@ -232,8 +323,6 @@ class GerarAtaWidget(QWidget):
             print(f"Tipo de self.dataframe_selecionado: {type(self.dataframe_selecionado)}")
             print(f"DataFrame está vazio: {self.dataframe_selecionado.empty if self.dataframe_selecionado is not None else 'None'}")
 
-
-     
     def abrir_edicao(self, categoria):
         dialog = EditPredefinicoesDialog(categoria, self.config_data, self)
         if dialog.exec():
@@ -262,8 +351,25 @@ class GerarAtaWidget(QWidget):
         ordenador_despesas = self.ordenador_despesa_combobox.currentText()
         numero_controle = self.numero_controle_lineedit.text()
 
-        if not all([header_text, cidade_selecionada, organizacao_selecionada, ordenador_despesas, numero_controle]):
-            QMessageBox.warning(self, "Aviso", "Por favor, preencha todos os campos.")
+        # Mapear os campos aos seus respectivos rótulos
+        campos = {
+            "Cabeçalho": header_text,
+            "Cidade": cidade_selecionada,
+            "Organização Gerenciadora": organizacao_selecionada,
+            "Ordenador de Despesas": ordenador_despesas,
+            "Número de Controle": numero_controle,
+        }
+
+        # Identificar os campos não preenchidos
+        campos_nao_preenchidos = [campo for campo, valor in campos.items() if not valor.strip()]
+
+        if campos_nao_preenchidos:
+            # Exibir mensagem com os campos faltantes
+            QMessageBox.warning(
+                self,
+                "Aviso",
+                f"Por favor, preencha os seguintes campos: {', '.join(campos_nao_preenchidos)}."
+            )
             return
 
         # Verifica se self.dataframe_selecionado foi carregado corretamente antes de continuar
@@ -280,9 +386,11 @@ class GerarAtaWidget(QWidget):
         self.processar_ata_de_registro_de_precos(
             header_text, cidade_selecionada, organizacao_selecionada, ordenador_despesas, numero_controle, self.dataframe_selecionado
         )
+
         # Abrir o diretório principal onde as subpastas foram criadas
         if hasattr(self, 'pasta_principal_criada') and self.pasta_principal_criada:
             os.startfile(self.pasta_principal_criada)
+
 
     def processar_ata_de_registro_de_precos(self, header_text, cidade, organizacao, ordenador_despesas, numero_controle, dataframe):
         print(f"Tipo em processar_ata_de_registro_de_precos: {type(dataframe)}")

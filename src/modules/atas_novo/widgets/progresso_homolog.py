@@ -161,7 +161,7 @@ class ProcessamentoWidget(QWidget):
             return
 
         uasg, num_pregao, ano_pregao = unique_combinations.iloc[0]
-        table_name = f"result_{uasg}_{num_pregao}_{ano_pregao}"
+        table_name = f"result_{num_pregao}_{ano_pregao}_{uasg}"
 
         # Deleta a tabela caso já exista e cria uma nova
         if not self.recriar_tabela(table_name):
