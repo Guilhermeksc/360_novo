@@ -31,6 +31,8 @@ IMAGES_DIR = RESOURCES_DIR / "images"
 TEMPLATE_DIR = RESOURCES_DIR / "template"
 TEMPLATE_PATH = TEMPLATE_DIR / 'template_ata.docx'
 
+ACANTO = ICONS_DIR / "brasil.png"
+
 # Modules
 MODULES_DIR = BASE_DIR / "modules"
 DISPENSA_ELETRONICA_DIR = MODULES_DIR / "dispensa_eletronica"

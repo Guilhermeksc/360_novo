@@ -1,9 +1,11 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QFileDialog, QHBoxLayout, QComboBox, QTableView, QHeaderView
+from PyQt6.QtWidgets import *
 from PyQt6.QtGui import QFont, QStandardItemModel, QStandardItem
 from PyQt6.QtCore import Qt
 import pandas as pd
 import os
 import locale
+from src.modules.utils.add_button import add_button_func
+from src.modules.utils.linha_layout import linha_divisoria_layout
 
 # Configurar o locale para formato brasileiro
 locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
@@ -32,6 +34,10 @@ class IndicadoresWidget(QWidget):
 
         # Criação do ComboBox para seleção de tabelas
         selecao_layout = QHBoxLayout()
+
+        spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        selecao_layout.addItem(spacer)
+
         selecao_label = QLabel("Selecione a Licitação:")
         selecao_label.setFont(QFont('Arial', 14))
         selecao_layout.addWidget(selecao_label)
@@ -42,33 +48,33 @@ class IndicadoresWidget(QWidget):
         selecao_layout.addWidget(self.selecao_combobox)
         layout.addLayout(selecao_layout)
 
-        # Indicador de Economicidade
-        economicidade_label = QLabel("Indicador de Economicidade")
-        economicidade_label.setFont(QFont('Arial', 12, QFont.Weight.Bold))
-        economicidade_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(economicidade_label)
-        
+        indicador_layout = QHBoxLayout()
+        indicador_layout.addStretch()
         # Inicialização do QLabel para valor de economicidade (vazio inicialmente)
-        self.valor_economicidade = QLabel("Clique em 'Recalcular' para calcular.")
+        self.valor_economicidade = QLabel("Clique em 'Recalcular' para calcular o Indicador de Economicidade.")
         self.valor_economicidade.setFont(QFont('Arial', 14))
         self.valor_economicidade.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.valor_economicidade)
-
         # Botão para recalcular economicidade
-        recalcular_button = QPushButton("Recalcular Economicidade")
-        recalcular_button.clicked.connect(self.atualizar_economicidade)
-        layout.addWidget(recalcular_button)
+
+        indicador_layout.addWidget(self.valor_economicidade)
+        add_button_func("Recalcular", "economy", self.atualizar_economicidade, indicador_layout, self.icons, "Clique para calcular o indicador de Economicidade.")  
+        indicador_layout.addStretch()        
+        layout.addLayout(indicador_layout)
 
         # Inicialização do QTableView
         self.table_view = QTableView(self)
         self.table_view.setFont(QFont('Arial', 10))
         layout.addWidget(self.table_view)
 
-        # Botão para gerar tabela Excel
-        gerar_tabela_button = QPushButton("Gerar Tabela XLSX")
-        gerar_tabela_button.clicked.connect(self.gerar_tabela_excel)
-        layout.addWidget(gerar_tabela_button)
+        linha_divisoria1, spacer_baixo_linha1 = linha_divisoria_layout()
+        layout.addWidget(linha_divisoria1)
+        layout.addSpacerItem(spacer_baixo_linha1)   
 
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()  # Espaço flexível à esquerda
+        add_button_func("Gerar Tabela XLSX", "process", self.gerar_tabela_excel, button_layout, self.icons, "Clique para Gerar a Tabela em Excel")  
+        button_layout.addStretch()  # Espaço flexível à direita
+        layout.addLayout(button_layout)
 
         # Carregar tabelas no ComboBox
         self.carregar_tabelas_result()
@@ -90,12 +96,8 @@ class IndicadoresWidget(QWidget):
             print(f"Carregando tabela única: {tabela}")
             print(self.homologacao_dataframe.head())
 
-            # Atualizar o QLabel de economicidade após carregar os dados
-            self.atualizar_economicidade()
-
             self.selecao_combobox.addItem(tabela)
             self.selecao_combobox.setCurrentIndex(0)
-            self.atualizar_tabela()
         else:
             for tabela in tabelas_result:
                 if tabela.startswith("result"):
@@ -103,10 +105,30 @@ class IndicadoresWidget(QWidget):
             self.selecao_combobox.currentIndexChanged.connect(self.atualizar_dataframe_selecionado)
 
     def atualizar_economicidade(self):
-        """Atualiza o QLabel com o valor da economicidade."""
+        """Atualiza o QLabel com o valor da economicidade e informações detalhadas."""
         print("Chamando calcular_economicidade...")
         economicidade_percentual = self.calcular_economicidade()
-        self.valor_economicidade.setText(f"{economicidade_percentual:.2f}% de economia média")
+        
+        # Obtém o texto atual do combobox
+        selecao_texto = self.selecao_combobox.currentText()
+
+        # Extrai número, ano e UASG a partir do padrão do texto
+        try:
+            if selecao_texto.startswith("resultAPI_"):
+                _, numero, ano, uasg = selecao_texto.split("_", 3)
+            else:
+                _, numero, ano, uasg = selecao_texto.split("_", 3)
+
+            # Atualiza o texto do QLabel com as informações detalhadas
+            self.valor_economicidade.setText(
+                f"{economicidade_percentual:.2f}% de economia média ({numero}/{ano} - UASG: {uasg})"
+            )
+        except ValueError as e:
+            print(f"Erro ao processar o texto do ComboBox: {e}")
+            # Caso o texto do ComboBox não esteja no formato esperado
+            self.valor_economicidade.setText(
+                f"{economicidade_percentual:.2f}% de economia média (Informações adicionais indisponíveis)"
+            )
 
     def atualizar_dataframe_selecionado(self):
         tabela = self.selecao_combobox.currentText()
@@ -126,21 +148,20 @@ class IndicadoresWidget(QWidget):
         else:
             print("Nenhuma tabela selecionada.")
 
-
     def atualizar_tabela(self):
         """Atualiza a QTableView com o DataFrame e configura os títulos das colunas."""
         if self.homologacao_dataframe is not None:
             model = QStandardItemModel()
-            
+
             # Definir os títulos personalizados para as colunas
             column_titles = {
                 1: "Item",
                 3: "Descrição",
-                4: "Unidade de\nFornecimento",
-                6: "Valor\nEstimado",
-                7: "Valor\nHomologado",
-                8: "Percentual\nDesconto (%)",
-                13: "Situação"
+                5: "Unidade de\nFornecimento",
+                7: "Valor\nEstimado",
+                8: "Valor\nHomologado",
+                9: "Percentual\nDesconto (%)",
+                14: "Situação"
             }
 
             # Aplicar os títulos personalizados ou os padrões
@@ -151,13 +172,29 @@ class IndicadoresWidget(QWidget):
             for row in self.homologacao_dataframe.itertuples(index=False):
                 items = []
                 for col, value in enumerate(row):
-                    if col in [6, 7]:  # Colunas 6 e 7 (Valor Estimado e Valor Homologado)
-                        formatted_value = (
-                            locale.currency(value, grouping=True) if pd.notnull(value) else ""
-                        )
+                    if col in [7, 8]:  # Colunas 7 e 8 (Valor Estimado e Valor Homologado)
+                        try:
+                            # Verificar se o valor é NaN ou inválido
+                            if pd.isnull(value):
+                                formatted_value = ""  # Não exibir nada para valores NaN
+                            else:
+                                # Converter para numérico e formatar como moeda
+                                numeric_value = float(value)
+                                formatted_value = locale.currency(numeric_value, grouping=True)
+                        except (ValueError, TypeError):
+                            formatted_value = ""  # Valor inválido ou ausente
                         items.append(QStandardItem(formatted_value))
-                    elif col == 8:  # Coluna 8 (Percentual de Desconto)
-                        formatted_value = f"{value:.2f}%" if pd.notnull(value) else ""
+                    elif col == 9:  # Coluna 8 (Percentual de Desconto)
+                        try:
+                            # Verificar se o valor é NaN ou inválido
+                            if pd.isnull(value):
+                                formatted_value = ""
+                            else:
+                                # Converter para numérico e formatar como percentual
+                                numeric_value = float(value)
+                                formatted_value = f"{numeric_value:.2f}%"
+                        except (ValueError, TypeError):
+                            formatted_value = ""  # Valor inválido ou ausente
                         items.append(QStandardItem(formatted_value))
                     else:
                         items.append(QStandardItem(str(value)))
@@ -170,6 +207,7 @@ class IndicadoresWidget(QWidget):
             self.configurar_tabela()
         else:
             print("Nenhuma tabela foi carregada para exibição.")
+
 
     def calcular_economicidade(self):
         """Calcula a média dos percentuais de desconto."""
@@ -242,8 +280,6 @@ class IndicadoresWidget(QWidget):
         except Exception as e:
             print(f"Erro inesperado ao calcular economicidade: {e}")
             return 0
-
-
     
     def gerar_tabela_excel(self):
         """Gera e abre uma tabela Excel com valores de economicidade usando fórmulas."""
@@ -359,7 +395,7 @@ class IndicadoresWidget(QWidget):
             return  # Sai da função se o modelo não estiver configurado
 
         # Define colunas visíveis
-        visible_columns = [1, 3, 4, 6, 7, 8, 13]  # Colunas visíveis
+        visible_columns = [1, 3, 5, 7, 8, 9, 14]  # Colunas visíveis
         for col in range(table_view.model().columnCount()):
             if col not in visible_columns:
                 table_view.hideColumn(col)  # Oculta as colunas que não estão na lista
@@ -370,14 +406,14 @@ class IndicadoresWidget(QWidget):
         # Configuração de redimensionamento das colunas
         table_view.setColumnWidth(1, 50)
         table_view.setColumnWidth(3, 250)
-        table_view.setColumnWidth(4, 100)
-        table_view.setColumnWidth(8, 100)
+        table_view.setColumnWidth(5, 100)
+        table_view.setColumnWidth(9, 100)
 
         table_view.horizontalHeader().setStretchLastSection(True)
         table_view.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        table_view.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        table_view.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
-        table_view.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+        table_view.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        table_view.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
         table_view.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
-        table_view.horizontalHeader().setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)
-        table_view.horizontalHeader().setSectionResizeMode(13, QHeaderView.ResizeMode.Stretch)
+        table_view.horizontalHeader().setSectionResizeMode(8, QHeaderView.ResizeMode.ResizeToContents)
+        table_view.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed)
+        table_view.horizontalHeader().setSectionResizeMode(14, QHeaderView.ResizeMode.Stretch)

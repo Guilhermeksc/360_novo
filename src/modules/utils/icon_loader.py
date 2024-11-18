@@ -29,6 +29,7 @@ def load_icons():
         "brasil": load_icon("brasil.png"),
         "arquivo": load_icon("arquivo.png"),
         "api": load_icon("api.png"),
+        "api_button": load_icon("api_button.png"),
         "init": load_icon("init.png"),
         "dash": load_icon("dash.png"),
         "dash_hover": load_icon("dash_hover.png"),
@@ -79,6 +80,7 @@ def load_icons():
         "magnifying-glass": load_icon("magnifying-glass.png"),
         "loading_table": load_icon("loading_table.png"),
         "table": load_icon("table.png"),
+        "copy": load_icon("copy.png"),
         "copy_1": load_icon("copy_1.png"),
         "concluido": load_icon("concluido.png"),
         "grid": load_icon("grid.png"),
@@ -119,5 +121,10 @@ def load_icons():
         "alert": load_icon("alert.png"),
         "tr": load_icon("star.png"),
         "homolog": load_icon("result.png"),
+        "process": load_icon("process.png"),
+        "homolog": load_icon("result.png"),
+        "economy": load_icon("economy.png"),
+        "statistics": load_icon("statistics.png"),
+        "sicaf": load_icon("sicaf.png"),
 
                 }

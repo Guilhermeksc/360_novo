@@ -12,9 +12,10 @@ class GerarAtasController(QObject):
 
     def setup_connections(self):
         # Conecta os sinais da view aos métodos do controlador
-        self.view.instrucoesSignal.connect(self.instrucoes)
+        # self.view.instrucoesSignal.connect(self.instrucoes)
         self.view.trSignal.connect(self.termo_referencia) 
         self.view.homologSignal.connect(self.termo_homologacao) 
+        self.view.sicafSignal.connect(self.sicaf_widget) 
         self.view.apiSignal.connect(self.api_consulta) 
         self.view.atasSignal.connect(self.gerar_atas)
         self.view.indicadoresSignal.connect(self.indicadores) 
@@ -56,6 +57,10 @@ class GerarAtasController(QObject):
     def termo_homologacao(self):
         # Exibe o widget de Processamento para Termo de Homologação
         self.view.content_area.setCurrentWidget(self.view.homolog_widget)
+
+    def sicaf_widget(self):
+        # Exibe o widget de Processamento para Termo de Homologação
+        self.view.content_area.setCurrentWidget(self.view.sicaf_widget)
 
     def api_consulta(self):
         # Atualiza para o widget de consulta API

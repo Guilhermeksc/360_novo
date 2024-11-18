@@ -195,14 +195,13 @@ class CustomProgressBar(QProgressBar):
         painter.end()
 
 class TreeViewWindow(QDialog): 
-    processing_complete = pyqtSignal(pd.DataFrame)  # Signal to emit processed DataFrame
 
-    def __init__(self, dataframe, icons_dir, parent=None):
+    def __init__(self, dataframe, icons_dir, database_ata_manager, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Resultados do Processamento")
+        self.setWindowTitle("Resultados do Processamento (Em construção)")
         self.dataframe = dataframe
         self.icons_dir = icons_dir
-        # Define the minimum size of the window
+        self.database_ata_manager = database_ata_manager  # Adiciona o gerenciador do banco de dados
         self.setMinimumSize(800, 600)
 
         self.setup_ui()
@@ -210,222 +209,33 @@ class TreeViewWindow(QDialog):
     def setup_ui(self):
         layout = QVBoxLayout(self)
 
-        # Create the TreeView
+        # Cria o TreeView e o popula
         self.treeView = CustomTreeView()
         self.populate_treeview()
 
         layout.addWidget(self.treeView)
-
-        # Create a QHBoxLayout for buttons
-        button_layout = QHBoxLayout()
-
-        # Button "Maximizar Vertical"
-        maximizar_button = QPushButton("Maximizar Vertical")
-        maximizar_button.clicked.connect(self.maximizar_vertical)
-        button_layout.addWidget(maximizar_button)
-
-        # Button "Processar SICAF"
-        processar_sicaf_button = QPushButton("Processar SICAF")
-        processar_sicaf_button.clicked.connect(self.finalizar_processamento_sicaf)  # Connect to the method
-        button_layout.addWidget(processar_sicaf_button)
-
-        # Button "Ajuda"
-        ajuda_button = QPushButton("Ajuda")
-        ajuda_button.clicked.connect(self.show_ajuda)
-        button_layout.addWidget(ajuda_button)
-
-        # Button "Fechar"
-        fechar_button = QPushButton("Fechar")
-        fechar_button.clicked.connect(self.close)
-        button_layout.addWidget(fechar_button)
-
-        # Add the button layout to the main layout
-        layout.addLayout(button_layout)
-
         self.setLayout(layout)
 
     def populate_treeview(self):
-        # Populate the tree view with the provided dataframe
-        creator = ModeloTreeview(self.icons_dir)
+        # Passa o database_ata_manager ao criar o modelo
+        creator = ModeloTreeview(self.icons_dir, self.database_ata_manager)
         model = creator.criar_modelo(self.dataframe)
         self.treeView.setModel(model)
-
-    def maximizar_vertical(self):
-        # Maximize the window vertically
-        screen_geometry = QGuiApplication.primaryScreen().geometry()
-        self.setGeometry(screen_geometry.x(), screen_geometry.y(), screen_geometry.width(), screen_geometry.height())
-
-    def show_ajuda(self):
-        # Implemente a lógica para mostrar a ajuda
-        QMessageBox.information(self, "Ajuda", "A função 'Ajuda' ainda não foi implementada.")
-
-    def iniciar_processamento_sicaf(self):
-        # Check if the SICAF directory exists
-        if not self.sicaf_dir.exists():
-            QMessageBox.warning(self, "Erro", "A pasta SICAF não existe.")
-            return
-        print(f"Iniciando processamento dos arquivos em: {self.sicaf_dir}")
-
-        # Create an instance of WorkerSICAF
-        self.worker = WorkerSICAF(self.sicaf_dir)
-        self.worker.processing_complete.connect(self.on_processing_complete)
-        self.worker.update_context_signal.connect(self.on_update_context)
-        self.worker.progress_signal.connect(self.on_progress_update)
-
-        # Start the thread
-        self.worker.start()
-
-
-    def on_processing_complete(self, extracted_data):
-        # Lista para armazenar os DataFrames individuais
-        dataframes = []
-
-        for idx, data in enumerate(extracted_data):
-            # Extrair dados usando a expressão regular dados_sicaf
-            df = extrair_dados_sicaf(data)
-
-            if not df.empty:
-                dataframes.append(df)
-                print(f"Dados extraídos do arquivo {idx + 1}:")
-                print(df)
-            else:
-                print(f"Nenhum dado extraído do arquivo {idx + 1}.")
-
-        if dataframes:
-            # Concatenar todos os DataFrames em um único DataFrame
-            final_df = pd.concat(dataframes, ignore_index=True)
-            print("Dados extraídos de todos os arquivos:")
-            print(final_df)
-        else:
-            print("Nenhum dado foi extraído de nenhum dos textos.")
             
-    def processar_sicaf(self):
-        # Implemente a lógica para processar SICAF
-        QMessageBox.information(self, "Processar SICAF", "A função 'Processar SICAF' ainda não foi implementada.")
-
-    def show_ajuda(self):
-        # Implemente a lógica para mostrar a ajuda
-        QMessageBox.information(self, "Ajuda", "A função 'Ajuda' ainda não foi implementada.")
-
-    def show_ajuda(self):
-        # Implement your help logic here
-        QMessageBox.information(self, "Ajuda", "Esta é a seção de ajuda.")
-
-    def finalizar_processamento_sicaf(self, extracted_data, dataframe):
-        self.update_context("Processamento SICAF concluído.")
-        self.timer.stop()  # Para o temporizador
-        elapsed_time = int(time.time() - self.start_time)
-        self.time_label.setText(f"Tempo total: {elapsed_time}s")
-        try:
-            dados_extraidos = []
-            for arquivo_txt in arquivos_txt:
-                dados_arquivo = self.processar_arquivo(extracted_data)
-                dados_extraidos.append(dados_arquivo)
-
-            df = pd.DataFrame(dados_extraidos)
-            if 'empresa' not in df.columns:
-                df['empresa'] = None
-
-            if loaded_dataframe is not None and not loaded_dataframe.empty:
-                df_final = pd.merge(df, loaded_dataframe, on='cnpj', how='right')
-                
-                # Preservar todos os dados de loaded_dataframe
-                df_final['match'] = df_final['empresa_x'] == df_final['empresa_y']
-                
-                print("DataFrame após merge e antes de limpeza:")
-                print(df_final)
-
-                # Limpeza e ajuste final das colunas
-                for col in ['empresa', 'cep', 'endereco', 'municipio', 'telefone', 'email', 'responsavel_legal']:
-                    df_final[col] = df_final[col + '_y'].fillna(df_final[col + '_x'])
-                    df_final.drop(columns=[col + '_x', col + '_y'], inplace=True)
-
-                df_final = df_final.sort_values(by='item', ascending=True)
-                print("DataFrame final após ajustes e limpeza:")
-                print(df_final)
-
-            else:
-                df_final = df  # Use o DataFrame original se não houver dados para combinar
-                print("Não há loaded_dataframe disponível, usando df original.")
-
-        except Exception as e:
-            print(f"Erro durante o processamento: {e}")
-            df_final = pd.DataFrame()  # Retorne um DataFrame vazio em caso de erro
-
-        return df_final
-    
-    def processar_arquivo(self, extracted_data):
-        item = extrair_dados_sicaf(extracted_data)
-        if not item:
-            return {'Erro': "Dados do SICAF não encontrados."}
-        
-        dados_responsavel = extrair_dados_responsavel(extracted_data)
-        if dados_responsavel:
-            item.update(dados_responsavel)
-        else:
-            item['Erro'] = "Dados do Responsável Legal não encontrados."
-        
-        return item
-
-    def update_context(self, text):
-        # Update the context area in the dialog
-        print(text)  # You might want to display this in a QLabel or QTextEdit instead
-
-    def update_progress(self, value):
-        # Update the progress bar in the dialog
-        print(f"Progresso: {value}%")  # You might want to update a QProgressBar instead
-
-    def show_ajuda(self):
-        # Implement your help logic here
-        QMessageBox.information(self, "Ajuda", "Esta é a seção de ajuda.")
-
-    def receber_df_final(self,dataframe):
-        if isinstance(dataframe, pd.DataFrame):
-            self.current_dataframe = dataframe  # Atualize o DataFrame atual
-            print("DataFrame final recebido do SICAF:")
-            print(dataframe)
-
-            # Verifica se as colunas necessárias existem
-            if {'num_pregao', 'ano_pregao', 'uasg'}.issubset(self.current_dataframe.columns):
-                # Filtra linhas onde qualquer uma das colunas chave contém NaN
-                filtered_df = self.current_dataframe.dropna(subset=['num_pregao', 'ano_pregao', 'uasg'])
-                
-                # Gera o nome da tabela apenas para linhas sem NaN
-                def create_table_name(row):
-                    return f"{row['num_pregao']}-{row['ano_pregao']}-{row['uasg']}-Homolog-Sicaf"
-
-                filtered_df['table_name'] = filtered_df.apply(create_table_name, axis=1)
-                
-                # Debugging output
-                print("Valores de 'num_pregao':", filtered_df['num_pregao'].unique())
-                print("Valores de 'ano_pregao':", filtered_df['ano_pregao'].unique())
-                print("Valores de 'uasg':", filtered_df['uasg'].unique())
-                print("Nomes de tabelas gerados:", filtered_df['table_name'].unique())
-                
-                if filtered_df['table_name'].nunique() == 1:
-                    table_name = filtered_df['table_name'].iloc[0]
-                    self.save_data(table_name)  # Chama a função de salvar com o nome da tabela
-                else:
-                    QMessageBox.critical(self, "Erro", "A combinação de 'num_pregao', 'ano_pregao', e 'uasg' não é única. Por favor, verifique os dados.")
-            else:
-                QMessageBox.critical(self, "Erro", "Dados necessários para criar o nome da tabela não estão presentes.")
-            return self.current_dataframe  # Retorna o DataFrame atualizado
-        else:
-            QMessageBox.warning(self, "Erro", "Dados recebidos não são válidos.")
-
 class ModeloTreeview:
-    def __init__(self, icons_dir):
-        self.icon_cache = icons_dir
+    def __init__(self, icons_dir, database_ata_manager):
+        self.icons = icons_dir
+        self.database_ata_manager = database_ata_manager  # Armazena o gerenciador do banco de dados
 
     def get_icon_for_cnpj(self, cnpj):
         """Verifica se o CNPJ existe na tabela registro_sicaf e retorna o ícone correspondente."""
         try:
             query = "SELECT 1 FROM registro_sicaf WHERE cnpj = ?"
-            result = self.db_manager.execute_query(query, (cnpj,))
-            return self.icon_cache["check"] if result else self.icon_cache["alert"]
+            result = self.database_ata_manager.execute_query(query, (cnpj,))
+            return self.icons["check"] if result else self.icons["alert"]
         except Exception as e:
             print(f"Modelo Treeview Erro ao acessar o banco de dados: {e}")
-            return self.icon_cache["alert"]
+            return self.icons["alert"]
 
     def determinar_itens_iguais(self, row, empresa_items):
         empresa_name = str(row['empresa']) if pd.notna(row['empresa']) else ""

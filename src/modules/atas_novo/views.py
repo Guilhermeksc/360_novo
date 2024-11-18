@@ -1,10 +1,11 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
-from src.modules.utils.add_button import add_button
+from src.modules.utils.add_button import add_button, add_button_result
 from src.modules.atas_novo.widgets.importar_tr import TermoReferenciaWidget
 from src.modules.atas_novo.widgets.instrucoes import InstructionWidget
 from src.modules.atas_novo.widgets.progresso_homolog import ProcessamentoWidget
+from src.modules.atas_novo.widgets.sicaf import RegistroSICAFDialog
 from src.modules.atas_novo.widgets.consultar_api import ConsultarAPI
 from src.modules.atas_novo.widgets.indicadores import IndicadoresWidget
 from src.modules.atas_novo.widgets.atas import GerarAtaWidget
@@ -13,9 +14,10 @@ from src.config.paths import PDF_DIR
 from src.modules.atas_novo.database_manager.db_manager import DatabaseATASManager
 
 class GerarAtasView(QMainWindow):
-    instrucoesSignal = pyqtSignal()
+    # instrucoesSignal = pyqtSignal()
     trSignal = pyqtSignal()
-    homologSignal = pyqtSignal() 
+    homologSignal = pyqtSignal()
+    sicafSignal = pyqtSignal() 
     apiSignal = pyqtSignal()
     atasSignal = pyqtSignal()
     indicadoresSignal = pyqtSignal()
@@ -55,11 +57,6 @@ class GerarAtasView(QMainWindow):
 
     def init_content_widgets(self):
         # Criação dos widgets de conteúdo e adição ao QStackedWidget
-        self.instrucoes_widget = InstructionWidget(self.icons, self)
-
-
-        self.content_area.addWidget(self.instrucoes_widget)
-
         self.tr_widget = TermoReferenciaWidget(self, self.icons)
         self.content_area.addWidget(self.tr_widget)
 
@@ -71,6 +68,15 @@ class GerarAtasView(QMainWindow):
             main_window=self
         )
         self.content_area.addWidget(self.homolog_widget)
+
+        self.sicaf_widget = RegistroSICAFDialog(
+            pdf_dir=self.pdf_dir,
+            model=self.model,
+            icons=self.icons,
+            database_ata_manager=self.database_ata_manager,  # Passa a instância do DatabaseATASManager
+            main_window=self
+        )
+        self.content_area.addWidget(self.sicaf_widget)
 
         self.api_widget = ConsultarAPI(
             icons=self.icons, 
@@ -106,12 +112,13 @@ class GerarAtasView(QMainWindow):
         button_layout = QHBoxLayout()
 
         # Cria cada botão individualmente chamando a função `add_button`
-        add_button("Instruções", "list-check", self.instrucoesSignal, button_layout, self.icons, "Clique para ver instruções")
+        # add_button("Instruções", "list-check", self.instrucoesSignal, button_layout, self.icons, "Clique para ver instruções")
         add_button("Termo de Referência", "layers", self.trSignal, button_layout, self.icons, "Acessar Termo de Referência")
         add_button("Termo de Homologação", "layers", self.homologSignal, button_layout, self.icons, "Acessar Termo de Homologação")
-        add_button("Gerar Ata", "features", self.atasSignal, button_layout, self.icons, "Gerar nova ata")
-        add_button("Consultar API", "api", self.apiSignal, button_layout, self.icons, "Consultar informações da API")
-        add_button("Indicadores", "performance", self.indicadoresSignal, button_layout, self.icons, "Visualizar indicadores")
+        add_button_result("SICAF", "layers", self.sicafSignal, button_layout, self.icons, "Atualizar SICAF", lambda: self.sicaf_widget.carregar_tabelas_result() if hasattr(self, 'sicaf_widget') else None)
+        add_button_result("Gerar Ata", "features", self.atasSignal, button_layout, self.icons, "Gerar nova ata", lambda: self.atas_widget.carregar_tabelas_result() if hasattr(self, 'sicaf_widget') else None)
+        add_button("Consultar", "api", self.apiSignal, button_layout, self.icons, "Consultar informações da API")
+        add_button_result("Indicadores", "performance", self.indicadoresSignal, button_layout, self.icons, "Visualizar indicadores", lambda: self.indicadores_widget.carregar_tabelas_result() if hasattr(self, 'sicaf_widget') else None)
 
         # Adiciona um espaçamento no final para ajustar o layout
         return button_layout

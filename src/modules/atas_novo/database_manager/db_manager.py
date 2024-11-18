@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import *
 import sqlite3
 import logging
 import pandas as pd
+import re
 
 class DatabaseATASManager:
     def __init__(self, db_path):
@@ -342,13 +343,12 @@ class DatabaseATASManager:
             conn.commit()       
 
     def criar_tabela_itens_pregao(self, numeroCompra, anoCompra, unidadeOrgaoCodigoUnidade):
-        table_name = f"result_API_{numeroCompra}_{anoCompra}_{unidadeOrgaoCodigoUnidade}"
+        table_name = f"resultAPI_{numeroCompra}_{anoCompra}_{unidadeOrgaoCodigoUnidade}"
         column_order = [
-            'grupo', 'item PRIMARY KEY', 'catalogo', 'descricao', 'unidade', 'quantidade', 'valor_estimado', 
+            'grupo', 'item PRIMARY KEY', 'catalogo', 'descricao', 'descricao_detalhada', 'unidade', 'quantidade', 'valor_estimado', 
             'valor_homologado_item_unitario', 'percentual_desconto', 'valor_estimado_total_do_item', 
             'valor_homologado_total_item', 'marca_fabricante', 'modelo_versao', 'situacao', 
-            'descricao_detalhada', 'uasg', 'orgao_responsavel', 'num_pregao', 'ano_pregao', 
-            'srp', 'objeto', 'melhor_lance', 'valor_negociado', 'ordenador_despesa', 'empresa', 
+            'uasg', 'orgao_responsavel', 'num_pregao', 'ano_pregao', 'srp', 'objeto', 'melhor_lance', 'valor_negociado', 'ordenador_despesa', 'empresa', 
             'cnpj', 'endereco', 'cep', 'municipio', 'telefone', 'email', 'responsavel_legal'
         ]
         
@@ -360,7 +360,7 @@ class DatabaseATASManager:
             conn.commit()      
 
     def popular_db_consulta_itens_api(self, resultados_completos, data_informacoes, numeroCompra, anoCompra, unidadeOrgaoCodigoUnidade):
-        table_name = f"result_API_{numeroCompra}_{anoCompra}_{unidadeOrgaoCodigoUnidade}"
+        table_name = f"resultAPI_{numeroCompra}_{anoCompra}_{unidadeOrgaoCodigoUnidade}"
         
         # Informações gerais de `data_informacoes` que serão inseridas com cada item
         data_informacoes_to_insert = {
@@ -392,6 +392,25 @@ class DatabaseATASManager:
             # Determina a situação com base no valor booleano
             situacao = 'Adjudicado e Homologado' if item.get("temResultado") == 1 else 'Fracassado/Deserto/Cancelado ou Anulado'
 
+            # Valida o formato de CNPJ ou CPF
+            ni_fornecedor = item.get("niFornecedor")
+            if ni_fornecedor:
+                # Mantém o formato se já estiver formatado corretamente
+                if re.match(r'^\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}$', ni_fornecedor):  # CNPJ
+                    cnpj = ni_fornecedor
+                elif re.match(r'^\d{3}\.\d{3}\.\d{3}-\d{2}$', ni_fornecedor):  # CPF
+                    cnpj = ni_fornecedor
+                else:
+                    # Se estiver apenas com números, formata como CNPJ ou CPF
+                    if len(ni_fornecedor) == 14:  # CNPJ
+                        cnpj = f"{ni_fornecedor[:2]}.{ni_fornecedor[2:5]}.{ni_fornecedor[5:8]}/{ni_fornecedor[8:12]}-{ni_fornecedor[12:]}"
+                    elif len(ni_fornecedor) == 11:  # CPF
+                        cnpj = f"{ni_fornecedor[:3]}.{ni_fornecedor[3:6]}.{ni_fornecedor[6:9]}-{ni_fornecedor[9:]}"
+                    else:
+                        cnpj = ni_fornecedor  # Deixa como está se não for reconhecido
+            else:
+                cnpj = None
+
             # Combina dados específicos do item com as informações gerais e os cálculos
             data_to_insert = {
                 "item": item.get("numeroItem"),
@@ -405,7 +424,7 @@ class DatabaseATASManager:
                 "valor_homologado_total_item": valor_homologado_total_item,
                 "valor_estimado_total_do_item": valor_estimado_total_do_item,
                 "situacao": situacao,  # Adiciona o valor convertido de `situacao`
-                "cnpj": item.get("niFornecedor"),
+                "cnpj": cnpj,  # Usa o valor formatado
                 "empresa": item.get("nomeRazaoSocialFornecedor"),
                 **data_informacoes_to_insert  # Adiciona as informações de `data_informacoes`
             }

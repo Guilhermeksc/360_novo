@@ -8,7 +8,7 @@ import pandas as pd
 from pathlib import Path
 from src.modules.atas_novo.widgets.worker_homologacao import Worker, TreeViewWindow, WorkerSICAF, extrair_dados_sicaf
 import logging
-from src.modules.utils.add_button import add_button_func
+from src.modules.utils.add_button import add_button_func, add_button_func_vermelho
 
 class ConclusaoDialog(QDialog):
     def __init__(self, parent=None):
@@ -79,12 +79,10 @@ class ProcessamentoWidget(QWidget):
     def setup_button_layout(self, main_layout):
         button_layout = QHBoxLayout()
         
-        add_button_func("Iniciar Processamento", "star", self.start_processing, button_layout, self.icon_cache, "Clique para ver instruções")
+        add_button_func_vermelho("Iniciar Processamento", "pdf", self.start_processing, button_layout, self.icon_cache, "Clique para ver instruções")
         add_button_func("Atualizar", "refresh", self.update_pdf_count, button_layout, self.icon_cache, "Clique para ver instruções")
         add_button_func("Abrir Pasta PDF", "add-folder", self.abrir_pasta_pdf, button_layout, self.icon_cache, "Clique para ver instruções")
         add_button_func("Redefinir Pasta PDF", "add-folder", self.definir_pasta_pdf_padrao, button_layout, self.icon_cache, "Clique para ver instruções")
-        add_button_func("SICAF", "layers", self.abrir_registro_sicaf, button_layout, self.icon_cache, "Clique para ver instruções")
-        add_button_func("Resultados", "result", self.open_results_treeview, button_layout, self.icon_cache, "Clique para ver instruções")
 
         main_layout.addLayout(button_layout)
 
@@ -272,18 +270,7 @@ class ProcessamentoWidget(QWidget):
         header = self.treeView.header()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
 
-    def open_results_treeview(self):
-        if self.homologacao_dataframe is not None and not self.homologacao_dataframe.empty:
-            # Certifique-se de passar os argumentos na ordem correta
-            tree_view_window = TreeViewWindow(
-                dataframe=self.homologacao_dataframe,
-                icons_dir=self.icon_cache,       # Diretório de ícones
-                parent=self
-            )
-            tree_view_window.exec()  # Abre a janela como modal
-        else:
-            QMessageBox.warning(self, "Erro", "Não há dados disponíveis para mostrar no TreeView.")
-  
+
     def abrir_registro_sicaf(self):
         if self.homologacao_dataframe is None:
             QMessageBox.warning(self, "Erro", "Dados não disponíveis.")

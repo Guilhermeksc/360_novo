@@ -7,7 +7,8 @@ import time
 from pathlib import Path
 from src.modules.atas_novo.widgets.progresso_homolog import TreeViewWindow
 from src.config.paths import CONFIG_API_FILE
-from src.modules.utils.add_button import add_button_func
+from src.modules.utils.add_button import add_button_func_vermelho
+from src.modules.utils.linha_layout import linha_divisoria_layout
 
 class PNCPConsultaThread(QThread):
     consulta_concluida = pyqtSignal(list, list)
@@ -200,10 +201,15 @@ class ConsultarAPI(QWidget):
         label_api.setFont(QFont('Arial', 16, QFont.Weight.Bold))
         layout.addWidget(label_api)
 
+        orientacoes = QLabel("O padrão do ID contratação do PNCP é '[CNPJ da Matriz]-1-[sequencial]/[ano]'.")
+        orientacoes.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        orientacoes.setFont(QFont('Arial', 12))
+        layout.addWidget(orientacoes)
+
         # HLayout CNPJ
         h_layout = QHBoxLayout()
         label_cnpj = QLabel("CNPJ:")
-        label_cnpj.setFont(QFont('Arial', 14))  
+        label_cnpj.setFont(QFont('Arial', 12))  
         self.cnpj_input = QLineEdit()
         self.cnpj_input.setFont(QFont('Arial', 12))  
         h_layout.addWidget(label_cnpj)
@@ -211,7 +217,7 @@ class ConsultarAPI(QWidget):
 
         # HLayout Ano
         label_ano = QLabel("Ano:")
-        label_ano.setFont(QFont('Arial', 14))  
+        label_ano.setFont(QFont('Arial', 12))  
         self.ano_input = QLineEdit()
         self.ano_input.setFont(QFont('Arial', 12))  
         h_layout.addWidget(label_ano)
@@ -219,17 +225,21 @@ class ConsultarAPI(QWidget):
 
         # HLayout Sequencial
         label_sequencial = QLabel("Sequencial:")
-        label_sequencial.setFont(QFont('Arial', 14))  
+        label_sequencial.setFont(QFont('Arial', 12))  
         self.sequencial_input = QLineEdit()
         self.sequencial_input.setFont(QFont('Arial', 12))  
         h_layout.addWidget(label_sequencial)
         h_layout.addWidget(self.sequencial_input)
         layout.addLayout(h_layout)
 
+        linha_divisoria1, spacer_baixo_linha1 = linha_divisoria_layout()
+        layout.addWidget(linha_divisoria1)
+        layout.addSpacerItem(spacer_baixo_linha1)   
+
         # Botão "Consultar PNCP"
         button_layout = QHBoxLayout()
         button_layout.addStretch()  # Espaço flexível à esquerda
-        add_button_func("Consultar PNCP", "processing", self.iniciar_consulta, button_layout, self.icons, "Clique para consultar o sequencial da contratação no PNCP")  
+        add_button_func_vermelho("Consultar PNCP", "process", self.iniciar_consulta, button_layout, self.icons, "Clique para consultar o sequencial da contratação no PNCP")  
         button_layout.addStretch()  # Espaço flexível à direita
         layout.addLayout(button_layout)
 
@@ -240,9 +250,9 @@ class ConsultarAPI(QWidget):
 
         button_layout = QHBoxLayout()
 
-        self.registro_sicaf_button = QPushButton("Registro SICAF")
-        self.registro_sicaf_button.clicked.connect(self.abrir_registro_sicaf)
-        button_layout.addWidget(self.registro_sicaf_button)
+        # self.registro_sicaf_button = QPushButton("Registro SICAF")
+        # self.registro_sicaf_button.clicked.connect(self.abrir_registro_sicaf)
+        # button_layout.addWidget(self.registro_sicaf_button)
 
         self.open_results_button = QPushButton("Abrir Resultados")
         self.open_results_button.clicked.connect(self.open_results_treeview)  # Conectar ao método

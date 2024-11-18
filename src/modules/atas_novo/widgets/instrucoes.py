@@ -14,9 +14,9 @@ class InstructionWidget(QWidget):
         layout.addLayout(self.create_paragraph(
             "Primeiro passo (Importar os dados do Termo de Referência)",
             [
-                ("Importar do", None),
-                ("Termo de Referência", self.icons.get("layers")),
-                ("as colunas ('catalogo', 'descricao' e 'descricao_detalhada') referentes à descrição do objeto.", None),
+                ("Importe do Termo de Referência no botão", None),
+                ("TR", self.icons.get("layers")),
+                ("as colunas ('catalogo', 'descricao' e 'descricao_detalhada').", None),
             ],
             additional_text="Este passo é essencial, pois as especificações não constam no termo de homologação e no comprasnet."
         ))
@@ -65,7 +65,7 @@ class InstructionWidget(QWidget):
             "Gerar Atas por meio de consulta à API do PNCP (Opcional)",
             [
                 ("O botão", None),
-                ("Consulta API", self.icons.get("api")),
+                ("Consulta", self.icons.get("api")),
                 ("permite criar as atas automaticamente com base no número sequencial da contratação no PNCP.", None)
             ]
         ))

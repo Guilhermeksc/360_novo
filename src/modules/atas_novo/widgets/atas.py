@@ -14,7 +14,7 @@ from docx.oxml import parse_xml
 from openpyxl.styles import Font, PatternFill
 from src.config.paths import PRE_DEFINICOES_JSON, TEMPLATE_PATH, ORGANIZACOES_FILE, AGENTES_RESPONSAVEIS_FILE
 import json
-from src.modules.utils.add_button import add_button_func
+from src.modules.utils.add_button import add_button_func_vermelho
 import os
 from PyQt6.QtSql import QSqlQuery
 
@@ -111,6 +111,9 @@ class GerarAtaWidget(QWidget):
 
         # Carregar tabelas com "result" no nome para o ComboBox
         self.carregar_tabelas_result()
+        linha_divisoria1, spacer_baixo_linha1 = linha_divisoria_layout()
+        layout.addWidget(linha_divisoria1)
+        layout.addSpacerItem(spacer_baixo_linha1)   
 
         cabecalho_label = QLabel("Defina o cabeçalho:")
         layout.addWidget(cabecalho_label)
@@ -184,10 +187,15 @@ class GerarAtaWidget(QWidget):
         numero_layout.addWidget(rotulo)
         
         self.numero_controle_lineedit = QLineEdit()
-        self.numero_controle_lineedit.setFixedWidth(200)
+        self.numero_controle_lineedit.setFixedWidth(100)
         self.numero_controle_lineedit.setFont(QFont('Arial', 12))    
 
         numero_layout.addWidget(self.numero_controle_lineedit)
+
+        linha_divisoria2, spacer_baixo_linha2 = linha_divisoria_layout()
+        numero_layout.addWidget(linha_divisoria2)
+        numero_layout.addSpacerItem(spacer_baixo_linha2)   
+
         # Adiciona um espaço flexível antes do QLabel para empurrá-lo para a direita
         spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout.addItem(spacer)
@@ -200,9 +208,9 @@ class GerarAtaWidget(QWidget):
 
         # Layout horizontal para centralizar o botão
         button_layout = QHBoxLayout()
-
-        add_button_func("Gerar Ata", "processing", self.gerar_ata, button_layout, self.icons, "Clique para gerar a ata")
-
+        button_layout.addStretch()
+        add_button_func_vermelho("Gerar Ata", "process", self.gerar_ata, button_layout, self.icons, "Clique para gerar a ata")
+        button_layout.addStretch()
         # Adiciona o layout de botão centralizado ao layout principal
         layout.addLayout(button_layout)
         layout.addStretch()

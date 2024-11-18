@@ -3,13 +3,55 @@ from PyQt6.QtGui import QIcon, QCursor
 from PyQt6.QtCore import QSize, Qt
 from pathlib import Path
 
-def add_button_func(text, icon_name, slot, layout, icons, tooltip=None):
-    button = QPushButton(text)
+def add_button_copy(text, icon_name, slot, layout, icons, tooltip=None):
+    button = QPushButton()
+    
+    # Configurar ícone no botão
     icon = icons.get(icon_name)
     if icon:
         button.setIcon(icon)
+    button.setIconSize(QSize(22, 22))
+    
+    # Apenas define o texto se for passado
+    if text:
+        button.setText(text)
+    
+    # Aplicando o CSS para o estilo do botão
+    button.setStyleSheet("""
+        QPushButton {
+            background-color: transparent;
+            border: none;
+            padding: 2px;  /* Ajuste de padding interno */
+        }
+        QPushButton:hover {
+            background-color: #2C2F3F;
+        }
+    """)
 
+    if tooltip:
+        button.setToolTip(tooltip)
+
+    button.clicked.connect(slot)
+
+    # Adicionar botão ao layout
+    layout.setSpacing(1)
+    layout.setContentsMargins(0, 2, 0, 2)
+    layout.addWidget(button)
+    button.setCursor(Qt.CursorShape.PointingHandCursor)
+    return button
+
+def add_button_func(text, icon_name, slot, layout, icons, tooltip=None):
+    button = QPushButton()
+    
+    # Configurar ícone no botão
+    icon = icons.get(icon_name)
+    if icon:
+        button.setIcon(icon)
     button.setIconSize(QSize(30, 30))
+    
+    # Apenas define o texto se for passado
+    if text:
+        button.setText(text)
     
     # Aplicando o CSS para o estilo do botão
     button.setStyleSheet("""
@@ -17,6 +59,41 @@ def add_button_func(text, icon_name, slot, layout, icons, tooltip=None):
             background-color: #181928;
             color: #8AB4F7;
             font-size: 14px;
+            font-weight: bold;
+            border: none;
+            padding: 8px;
+            border-radius: 20px;
+        }
+        QPushButton:hover {
+            background-color: #2C2F3F;
+            color: #FFFFFF;
+        }
+    """)
+
+    if tooltip:
+        button.setToolTip(tooltip)
+
+    button.clicked.connect(slot)
+
+    layout.addWidget(button)
+    button.setCursor(Qt.CursorShape.PointingHandCursor)
+    return button
+
+
+def add_button_func_vermelho(text, icon_name, slot, layout, icons, tooltip=None):
+    button = QPushButton(text)
+    icon = icons.get(icon_name)
+    if icon:
+        button.setIcon(icon)
+
+    button.setIconSize(QSize(40, 40))
+    
+    # Aplicando o CSS para o estilo do botão
+    button.setStyleSheet("""
+        QPushButton {
+            background-color: #181928;
+            color: #8AB4F7;
+            font-size: 20px;
             font-weight: bold;
             border: none;
             padding: 8px 16px;
@@ -36,6 +113,46 @@ def add_button_func(text, icon_name, slot, layout, icons, tooltip=None):
 
     layout.addWidget(button)
     button.setCursor(Qt.CursorShape.PointingHandCursor)
+    return button
+
+def add_button_result(label, icon_name, signal, layout, icons=None, tooltip=None, additional_click_action=None):
+    button = QPushButton(label)
+    
+    # Verifica se icons não é None antes de tentar obter o ícone
+    if icons and icon_name in icons:
+        button.setIcon(icons.get(icon_name))
+    else:
+        print(f"Aviso: Ícone '{icon_name}' não encontrado ou 'icons' não foi passado.")
+    
+    button.setIconSize(QSize(30, 30))
+    button.clicked.connect(signal.emit)
+
+    # Adiciona a ação adicional ao clique, se fornecida
+    if additional_click_action:
+        button.clicked.connect(additional_click_action)
+
+    # Estilo do botão
+    button.setStyleSheet("""
+        QPushButton {
+            background-color: #181928;
+            color: #8AB4F7;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+        }
+        QPushButton:hover {
+            background-color: #2C2F3F;
+            color: #FFFFFF;
+        }
+    """)
+    
+    button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+    if tooltip:
+        button.setToolTip(tooltip)
+
+    layout.addWidget(button)
     return button
 
 

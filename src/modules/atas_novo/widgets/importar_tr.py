@@ -16,6 +16,21 @@ class TermoReferenciaWidget(QWidget):
         # Configuração do layout principal
         self.layout = QVBoxLayout(self)
 
+        title = QLabel("Especificação do Termo de Referência")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setFont(QFont('Arial', 16, QFont.Weight.Bold))
+        self.layout.addWidget(title)
+
+        title1 = QLabel("Este passo é ncessário para obter as especificações do termo de referência, que não constam no termo de homologação ou no comprasnet.")
+        title1.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        title1.setFont(QFont('Arial', 12))
+        self.layout.addWidget(title1)
+
+        title2 = QLabel("Importante! O índice da tabela deve ser 'item', 'catalogo', 'descricao' e 'descricao_detalhada'.")
+        title2.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        title2.setFont(QFont('Arial', 12))
+        self.layout.addWidget(title2)
+
         # Configurar o QTableView para exibir os dados
         self.table_view = QTableView(self)
         self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)  # Seleciona a linha inteira
