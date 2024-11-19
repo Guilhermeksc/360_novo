@@ -6,6 +6,7 @@ from src.modules.planejamento.dialogs.graficos import GraficTableDialog
 from src.modules.planejamento.dialogs.gerar_tabela import TabelaResumidaManager
 from src.modules.planejamento.dialogs.edit_data.edit_data import EditarDadosWindow
 from src.modules.planejamento.database_manager.db_manager import DatabaseManager
+from src.modules.planejamento.controle_prazos.fluxo import ControlePrazosDialog
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 import pandas as pd
@@ -30,9 +31,11 @@ class LicitacaoController(QObject):
         self.view.addItem.connect(self.handle_add_item)
         self.view.deleteItem.connect(self.handle_delete_item)
         self.view.dataManager.connect(self.handle_data_manager)
-        self.view.rowDoubleClicked.connect(self.handle_edit_item)
-        self.view.request_consulta_api.connect(self.consultar_api)
-        self.view.pauloVitor.connect(self.print_teste)
+        self.view.controlePrazo.connect(self.handle_controle_prazos)
+
+    def handle_controle_prazos(self):
+        dialog = ControlePrazosDialog(self.model, self.view)
+        dialog.exec()
 
     def print_teste(self):
         print("Teste click paulo vitor")

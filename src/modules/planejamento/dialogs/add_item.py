@@ -149,8 +149,6 @@ class AddItemDialog(QDialog):
 
         material_servico = "Material" if self.material_radio.isChecked() else "Serviço"
         tipo_de_processo = self.tipo_cb.currentText()
-        com_disputa = "Sim"  
-        pesquisa_preco = "Não"  
         atividade_custeio = "Não"  
 
         data = {
@@ -163,8 +161,6 @@ class AddItemDialog(QDialog):
             'orgao_responsavel': orgao_responsavel,
             'uasg': uasg,
             'material_servico': material_servico,
-            'com_disputa': com_disputa,
-            'pesquisa_preco': pesquisa_preco,
             'atividade_custeio': atividade_custeio
         }
 

@@ -10,12 +10,8 @@ class LicitacaoWidget(QMainWindow):
     addItem = pyqtSignal()
     deleteItem = pyqtSignal()
     dataManager = pyqtSignal()
-    pauloVitor = pyqtSignal()
-    sinalNovo = pyqtSignal()
-    loadData = pyqtSignal(str)
-    rowDoubleClicked = pyqtSignal(dict)
-    request_consulta_api = pyqtSignal(str, str, str, str, str)
-    
+    controlePrazo = pyqtSignal()
+
     def __init__(self, icons, model, database_path, parent=None):
         super().__init__(parent)
         self.icons = icons
@@ -84,11 +80,10 @@ class LicitacaoWidget(QMainWindow):
             return None
         
     def setup_buttons(self, layout):
-        add_button("Teste1", "test", self.pauloVitor, layout, self.icons, tooltip="Teste paulo vitor" )
         add_button("Adicionar", "plus", self.addItem, layout, self.icons, tooltip="Adicionar um novo item")
-        add_button_func("Teste2", "test", self.sinalNovo, layout, self.icons, tooltip="Teste 2" )
-        # add_button("Excluir", "delete", self.deleteItem, layout, self.icons, tooltip="Excluir o item selecionado")
-        # add_button("Database", "data-server", self.dataManager, layout, self.icons, tooltip="Salva o dataframe em um arquivo Excel")
+        add_button("Excluir", "delete", self.deleteItem, layout, self.icons, tooltip="Excluir o item selecionado")
+        add_button("Database", "data-server", self.dataManager, layout, self.icons, tooltip="Salva o dataframe em um arquivo Excel")
+        add_button("Controle", "calendar", self.controlePrazo, layout, self.icons, tooltip="Controle de Prazos" )
 
     def refresh_model(self):
         """Atualiza a tabela com os dados mais recentes do banco de dados."""
