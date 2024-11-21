@@ -11,66 +11,59 @@ from src.modules.utils.linha_layout import linha_divisoria_layout, linha_divisor
 from src.modules.utils.select_om import create_selecao_om_layout, load_sigla_om, on_om_changed
 from src.modules.utils.agentes_responsaveis_layout import create_combo_box, carregar_agentes_responsaveis
 from pathlib import Path
-from src.config.paths import CONTROLE_DADOS
+from src.config.paths import CONTROLE_DADOS, CONTROLE_PRAZOS
 import json
 import pandas as pd
 import os
 import subprocess
 from src.modules.utils.add_button import add_button, add_button_func
-from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-import sqlite3
 
-CONFIG_FILE = 'config.json'
+def create_icon_checkbox(label_text, icon_unchecked, icon_checked, is_checked=False):
+    """Cria um layout horizontal contendo um QCheckBox com QIcon para estados personalizado."""
+    layout = QHBoxLayout()
 
-def load_config_path_id():
-    if not Path(CONFIG_FILE).exists():
-        return {}
-    with open(CONFIG_FILE, 'r') as file:
-        return json.load(file)
+    # Checkbox
+    checkbox = QCheckBox()
+    checkbox.setChecked(is_checked)
+    checkbox.setFixedSize(40, 40)  # Tamanho fixo do componente
+    checkbox.setCursor(Qt.CursorShape.PointingHandCursor)  # Cursor de mãozinha
 
-def save_config(config):
-    with open(CONFIG_FILE, 'w') as file:
-        json.dump(config, file)
+    # Definindo os ícones para estados marcados e desmarcados
+    checkbox.setIcon(icon_unchecked if not is_checked else icon_checked)
+    checkbox.setIconSize(checkbox.size())  # Ajusta o tamanho do ícone ao tamanho do checkbox
 
-def number_to_text(number):
-    numbers_in_words = ["um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez", "onze", "doze"]
-    return numbers_in_words[number - 1] 
-    
+    # Atualiza o ícone ao alternar o estado
+    def update_icon(state):
+        if state == 2:  # Marcado
+            checkbox.setIcon(icon_checked)
+        else:  # Desmarcado
+            checkbox.setIcon(icon_unchecked)
+
+    checkbox.stateChanged.connect(update_icon)
+
+    # Texto do checkbox
+    label = QLabel(label_text)
+    label.setStyleSheet("font-size: 14px; font-weight: bold")
+    layout.addWidget(checkbox)
+    layout.addWidget(label)
+
+    return layout, checkbox
 class EditarDadosWindow(QMainWindow):
     save_data_signal = pyqtSignal(dict)
-    save_data_api_signal = pyqtSignal(dict)
-    request_consulta_api = pyqtSignal(str, str, str, str, str)
-    status_atualizado = pyqtSignal(str, str)
-    pastas_existentes = pyqtSignal(str, QIcon)
-    formulario_carregado = pyqtSignal(pd.DataFrame)
 
-    def __init__(self, dados, icons, total_homologado=0, count_anulado_fracassado=0, count_informado=0, parent=None):
+    def __init__(self, dados, icons, parent=None):
     # def __init__(self, dados, icons, parent=None):
         super().__init__(parent)
         self.dados = dados
         self.icons = icons
-
-        # Armazena os valores passados
-        self.total_homologado = total_homologado
-        self.count_anulado_fracassado = count_anulado_fracassado
-        self.count_informado = count_informado
-
-
-        self.status_atualizado.connect(self.atualizar_om_label)
-        self.pastas_existentes.connect(self.atualizar_status_layout)
-        # self.formulario_carregado.connect(self.on_formulario_carregado)
 
         # Configurações gerais da janela
         self.setWindowTitle("Editar Dados")
         self.setWindowIcon(self.icons.get("edit", None))
         self.setFixedSize(1150, 780)
         self.move(0, 0)  # Posicionar no canto superior esquerdo da tela
-
-        # Carrega todas as referências e widgets
         self.carregar_referencias()
 
-        # Inicialização da interface gráfica e configuração da UI
         self.setup_ui()
 
     def atualizar_om_label(self, uasg, orgao_responsavel):
@@ -92,241 +85,12 @@ class EditarDadosWindow(QMainWindow):
             self.icon_label.setPixmap(icon_pixmap)
         else:
             self.icon_label.clear()  # Limpa o ícone se não houver um válido
-            
-    def carregar_referencias(self):
-        """Configura as referências, widgets, e objetos utilizados na classe."""
-        
-        # Referências aos RadioButtons para material_servico, com_disputa e pesquisa_preco
-        self.radio_material = None
-        self.radio_servico = None
-        self.radio_disputa_sim = None
-        self.radio_disputa_nao = None
-        self.radio_pesquisa_sim = None
-        self.radio_pesquisa_nao = None
-        self.selected_button = None
-        # Inicialização do stacked_widget com estilo aplicado
-        self.stacked_widget = QStackedWidget(self)
-        self.stacked_widget.setStyleSheet("""
-            QLabel { font-size: 16px; }
-            QCheckBox { font-size: 16px; }
-            QLineEdit { font-size: 14px; }
-        """)
-        # Inicialização do mapa de widgets
-        self.widgets_map = {}
-
-        # Configurações de caminho e base de dados
-        self.database_path = CONTROLE_DADOS
-        self.config = load_config_path_id()
-        self.pasta_base = Path(self.config.get('pasta_base', str(Path.home() / 'Desktop')))
-
-
-        # Label de status para mostrar atualizações de consolidação
-        self.status_label = QLabel(self)
-
-        # Utilização dos dicionários externos
-        self.colunas_legiveis = COLUNAS_LEGIVEIS
-        self.colunas_legiveis_inverso = COLUNAS_LEGIVEIS_INVERSO
-
-        # Mapas de normalização de valores para campos específicos
-        self.normalizacao_valores = CORRECAO_VALORES
-
-        self.save_data_signal.connect(self.consolidador.update_data)
-        
-    def verificar_pastas(self, pasta_base):
-        # Acesse o id_processo a partir de self.dados
-        id_processo = self.dados.get('id_processo', 'desconhecido').replace("/", "-")  # Use uma chave de dicionário
-        objeto = self.dados.get('objeto', 'objeto_desconhecido').replace("/", "-")  # Acessando corretamente o objeto
-
-        base_path = pasta_base / f'{id_processo} - {objeto}'
-
-        pastas_necessarias = [
-            base_path / '1. Autorizacao',
-            base_path / '2. CP e anexos',
-            base_path / '3. Aviso',
-            base_path / '2. CP e anexos' / 'DFD',
-            base_path / '2. CP e anexos' / 'DFD' / 'Anexo A - Relatorio Safin',
-            base_path / '2. CP e anexos' / 'DFD' / 'Anexo B - Especificações e Quantidade',
-            base_path / '2. CP e anexos' / 'TR',
-            base_path / '2. CP e anexos' / 'TR' / 'Pesquisa de Preços',
-            base_path / '2. CP e anexos' / 'Declaracao de Adequação Orçamentária',
-            base_path / '2. CP e anexos' / 'Declaracao de Adequação Orçamentária' / 'Relatório do PDM-Catser',
-            base_path / '2. CP e anexos' / 'Justificativas Relevantes',
-            base_path / '2. CP e anexos' / 'ETP',
-            base_path / '2. CP e anexos' / 'MR',
-        ]
-
-        # Verifica se todas as pastas necessárias existem
-        pastas_existentes = all(pasta.exists() for pasta in pastas_necessarias)
-        return pastas_existentes
-
-    def verificar_e_criar_pastas(self, pasta_base):
-        try:
-            id_processo_modificado = self.id_processo.replace("/", "-")
-            objeto_modificado = self.objeto.replace("/", "-")
-            base_path = pasta_base / f'{id_processo_modificado} - {objeto_modificado}'
-
-            pastas_necessarias = [
-                pasta_base / '1. Autorizacao',
-                pasta_base / '2. CP e anexos',
-                pasta_base / '3. Aviso',
-                pasta_base / '2. CP e anexos' / 'DFD',
-                pasta_base / '2. CP e anexos' / 'DFD' / 'Anexo A - Relatorio Safin',
-                pasta_base / '2. CP e anexos' / 'DFD' / 'Anexo B - Especificações e Quantidade',
-                pasta_base / '2. CP e anexos' / 'TR',
-                pasta_base / '2. CP e anexos' / 'TR' / 'Pesquisa de Preços',
-                pasta_base / '2. CP e anexos' / 'Declaracao de Adequação Orçamentária',
-                pasta_base / '2. CP e anexos' / 'Declaracao de Adequação Orçamentária' / 'Relatório do PDM-Catser',
-                pasta_base / '2. CP e anexos' / 'Justificativas Relevantes',
-                pasta_base / '2. CP e anexos' / 'ETP',
-                pasta_base / '2. CP e anexos' / 'MR',
-            ]
-
-            for pasta in pastas_necessarias:
-                if not pasta.exists():
-                    pasta.mkdir(parents=True)
-
-        except (FileNotFoundError, PermissionError) as e:
-            QMessageBox.critical(self, "Erro ao criar pastas", f"Não foi possível criar as pastas necessárias devido ao erro: {str(e)}. Por favor, selecione uma nova pasta base na aba 'Documentos'.")
-            
-        return pastas_necessarias
         
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
             self.close()
         else:
             super().keyPressEvent(event)
-
-    def create_agentes_responsaveis_layout(self, max_width=300):
-        """Cria o layout para os agentes responsáveis e o organiza em um QGroupBox estilizado."""
-        group_box = QGroupBox("Agentes Responsáveis")
-        group_box.setMaximumWidth(max_width)
-        group_box.setStyleSheet(STYLE_GROUP_BOX)
-
-        # Frame para organizar os agentes responsáveis
-        frame_agentes = QFrame()
-        agente_responsavel_layout = QVBoxLayout(frame_agentes)
-
-        # Criação dos ComboBox com ajuste de altura
-        self.ordenador_combo = create_combo_box('', [], 270, 58)
-        self.agente_fiscal_combo = create_combo_box('', [], 270, 58)
-        self.gerente_credito_combo = create_combo_box('', [], 270, 58)
-        self.responsavel_demanda_combo = create_combo_box('', [], 270, 58)
-        self.operador_dispensa_combo = create_combo_box('', [], 270, 58)
-
-        # Adicionando labels e ComboBox diretamente ao layout
-        labels_combos = [
-            ("Ordenador de Despesa:", self.ordenador_combo),
-            ("Agente Fiscal:", self.agente_fiscal_combo),
-            ("Gerente de Crédito:", self.gerente_credito_combo),
-            ("Responsável pela Demanda:", self.responsavel_demanda_combo),
-            ("Operador da Contratação:", self.operador_dispensa_combo)
-        ]
-
-        for label_text, combo_box in labels_combos:
-            h_layout = QVBoxLayout()
-            h_layout.setSpacing(0)
-            h_layout.setContentsMargins(0, 0, 0, 0)
-            label = QLabel(label_text)
-            label.setStyleSheet("color: #8AB4F7; font-size: 16px")
-            h_layout.addWidget(label)
-            h_layout.addWidget(combo_box)
-            agente_responsavel_layout.addLayout(h_layout)
-
-        # Carrega os agentes responsáveis para popular os ComboBoxes
-        carregar_agentes_responsaveis(self.database_path, {
-            "Ordenador de Despesa%": self.ordenador_combo,
-            "Agente Fiscal%": self.agente_fiscal_combo,
-            "Gerente de Crédito%": self.gerente_credito_combo,
-            "Operador%": self.operador_dispensa_combo,
-            "NOT LIKE": self.responsavel_demanda_combo
-        })
-
-        # Define o valor inicial de cada ComboBox com os dados passados em `data`
-        self.ordenador_combo.setCurrentText(self.dados.get('ordenador_despesas', ''))
-        self.agente_fiscal_combo.setCurrentText(self.dados.get('agente_fiscal', ''))
-        self.gerente_credito_combo.setCurrentText(self.dados.get('gerente_de_credito', ''))
-        self.responsavel_demanda_combo.setCurrentText(self.dados.get('responsavel_pela_demanda', ''))
-        self.operador_dispensa_combo.setCurrentText(self.dados.get('operador', ''))
-
-        # Adiciona o frame de agentes ao layout do group_box
-        group_layout = QVBoxLayout(group_box)
-        group_layout.addWidget(frame_agentes)
-
-        return group_box
-
-    def save_data(self):
-        # Coleta os dados dos widgets de contratação
-        data_to_save = {
-            'id_processo': self.dados.get('id_processo'),
-            'tipo': self.dados.get('tipo'),
-            'numero': self.dados.get('numero'),
-            'ano': self.dados.get('ano'),
-            'situacao': self.situacao_combo.currentText(),
-            'sigla_om': self.om_combo.currentText(),
-            'uasg': self.dados.get('uasg'),
-            'orgao_responsavel': self.dados.get('orgao_responsavel'),
-            'setor_responsavel': self.setor_responsavel_combo.currentText(),
-            'data_sessao': self.data_edit.date().toString("yyyy-MM-dd"),
-            'cnpj_matriz': self.cnpj_edit.text(),
-            'sequencial_pncp': self.sequencial_edit.text(),
-            'objeto': self.objeto_edit.text(),
-            'nup': self.nup_edit.text(),
-            # Corrige para usar o valor dos RadioButtons
-            'material_servico': "Serviço" if self.radio_servico.isChecked() else "Material",
-            'vigencia': self.vigencia_combo.currentText(),
-            'criterio_julgamento': self.criterio_combo.currentText(),
-            'com_disputa': "Sim" if self.radio_disputa_sim.isChecked() else "Não",
-            'pesquisa_preco': "Sim" if self.radio_pesquisa_sim.isChecked() else "Não"
-        }
-        
-        # Coleta os dados dos widgets de classificação orçamentária
-        data_to_save.update({
-            'valor_total': self.valor_total_edit.text(),
-            'acao_interna': self.acao_interna_edit.text(),
-            'fonte_recursos': self.fonte_recursos_edit.text(),
-            'natureza_despesa': self.natureza_despesa_edit.text(),
-            'unidade_orcamentaria': self.unidade_orcamentaria_edit.text(),
-            'ptres': self.ptres_edit.text(),
-            'atividade_custeio': 'Sim' if self.radio_custeio_sim.isChecked() else 'Não'
-        })
-
-
-        data_to_save.update({
-            'comunicacao_padronizada': self.cp_edit.text(),
-            'cod_par': self.par_edit.text(),
-            'prioridade_par': self.prioridade_combo.currentText(),
-            'endereco': self.endereco_edit.text(),
-            'email': self.email_edit.text(),
-            'cep': self.cep_edit.text(),
-            'telefone': self.telefone_edit.text(),
-            'dias_recebimento': self.dias_edit.text(),
-            'horario_recebimento': self.horario_edit.text(),
-            'justificativa': self.justificativa_edit.toPlainText()
-        })
-
-        data_to_save.update({
-            'ordenador_despesas': self.ordenador_combo.currentText(),
-            'agente_fiscal': self.agente_fiscal_combo.currentText(),
-            'gerente_de_credito': self.gerente_credito_combo.currentText(),
-            'responsavel_pela_demanda': self.responsavel_demanda_combo.currentText(),
-            'operador': self.operador_dispensa_combo.currentText()
-        })
-        
-        # Debug para verificar o conteúdo de data_to_save
-        print("Dados para salvar:", data_to_save)
-
-        # Emissão do sinal para salvar os dados
-        self.save_data_signal.emit(data_to_save)
-
-    def atualizar_status(self, status_texto, icone_path):
-        """Atualiza o texto e o ícone do status_label"""
-        # Print para verificar a recepção do sinal
-        print(f"Received signal in atualizar_status with status_texto: '{status_texto}', icone_path: '{icone_path}'")
-        
-        self.status_label.setText(status_texto)
-        icon_folder = QIcon(icone_path)
-        icon_pixmap = icon_folder.pixmap(30, 30)
-        self.icon_label.setPixmap(icon_pixmap)  # Atualiza o pixmap do ícone
 
     def setup_ui(self):
         # Configura o widget principal e define o fundo preto e borda
@@ -345,27 +109,178 @@ class EditarDadosWindow(QMainWindow):
         Left_layout.addWidget(self.stacked_widget)
         self.central_layout.addLayout(Left_layout)
 
-        # Configura o layout da consulta API
-        self.group_box_consulta_api = self.setup_consulta_api()
-        self.group_box_agentes = self.create_agentes_responsaveis_layout()
-        self.group_box_sessao = self.create_sessao_publica_group()
-
-        # Cria um widget para o Right_layout e define o fundo preto
-        right_widget = QWidget()
-        right_widget.setStyleSheet("""
-            background-color: #12131D;
-            border: 2px solid #12131D;
-            border-radius: 15px;
-        """)
-        Right_layout = QVBoxLayout(right_widget)
-        Right_layout.addWidget(self.group_box_consulta_api)
-        Right_layout.addWidget(self.group_box_agentes)
-        Right_layout.addWidget(self.group_box_sessao)
-
-        self.central_layout.addWidget(right_widget)
-
         # Configuração dos widgets no QStackedWidget
         self.setup_stacked_widgets()
+
+    def setup_layout_titulo(self):
+        """Configura o layout do título com o ID do processo e a seção de consulta API."""
+        layout_titulo = QHBoxLayout()
+
+        # Configuração do layout de prioridade
+        prioridade_layout = QVBoxLayout()
+
+        # Adiciona o checkbox para "Prioritário"
+        check_prioridade_layout, self.prioridade_check = create_icon_checkbox(
+            "Prioritário",
+            icon_unchecked=self.icons.get("unmark", QIcon()),
+            icon_checked=self.icons.get("checkmark", QIcon()),
+            is_checked=False
+        )
+        prioridade_layout.addLayout(check_prioridade_layout)
+
+        # Adiciona o checkbox para "Emenda Parlamentar"
+        check_emenda_layout, self.emenda_check = create_icon_checkbox(
+            "Emenda Parlamentar",
+            icon_unchecked=self.icons.get("unmark", QIcon()),
+            icon_checked=self.icons.get("checkmark", QIcon()),
+            is_checked=False
+        )
+        prioridade_layout.addLayout(check_emenda_layout)
+
+        # Adiciona o checkbox para "Registro de Preços"
+        check_srp_layout, self.srp_check = create_icon_checkbox(
+            "Registro de Preços",
+            icon_unchecked=self.icons.get("unmark", QIcon()),
+            icon_checked=self.icons.get("checkmark", QIcon()),
+            is_checked=False
+        )
+        prioridade_layout.addLayout(check_srp_layout)
+
+        # Adicionando o layout de prioridade ao layout principal
+        layout_titulo.addLayout(prioridade_layout)
+
+        spacer_left = QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        layout_titulo.addSpacerItem(spacer_left)
+
+        # Cria um layout vertical para o título e um layout horizontal para ícones e texto
+        vlayout_titulo = QVBoxLayout()
+
+        # Layout horizontal para ícone esquerdo, título e ícone direito
+        hlayout_titulo = QHBoxLayout()
+
+        hlayout_titulo.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        # Ícone à esquerda
+        brasil_icon = QIcon(self.icons.get("brasil_2", None))
+        image_label_esquerda = QLabel()
+        image_label_esquerda.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        image_label_esquerda.setPixmap(brasil_icon.pixmap(30, 30))
+        hlayout_titulo.addWidget(image_label_esquerda)
+
+        # Texto do título centralizado
+        tipo = self.dados.get("tipo", "N/A")
+        numero = self.dados.get("numero", "N/A")
+        ano = self.dados.get("ano", "N/A")
+        title_label = QLabel(f"{tipo} nº {numero}/{ano}", self)
+
+        # Define o tamanho da fonte para 18 e em negrito
+        font_title = QFont()
+        font_title.setPointSize(18)
+        font_title.setBold(True)
+        title_label.setFont(font_title)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hlayout_titulo.addWidget(title_label)
+
+        # Ícone à direita
+        acanto_icon = QIcon(self.icons.get("acanto", None))
+        image_label_direita = QLabel()
+        image_label_direita.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        image_label_direita.setPixmap(acanto_icon.pixmap(40, 40))
+        hlayout_titulo.addWidget(image_label_direita)
+
+        # Adiciona outro espaçador para empurrar o ícone da direita
+        hlayout_titulo.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+
+        # Adiciona o layout horizontal ao layout vertical do título
+        vlayout_titulo.addLayout(hlayout_titulo)
+
+        # Criação do objeto_label com fonte 14
+        objeto = self.dados.get("objeto", "N/A")
+        material_servico = self.dados.get("material_servico", "N/A")
+        self.objeto_label = QLabel(f"{objeto} ({material_servico})", self)
+
+        font_objeto = QFont()
+        font_objeto.setPointSize(12)
+        self.objeto_label.setFont(font_objeto)
+        self.objeto_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Adiciona objeto_label ao layout de labels abaixo de title_label
+        vlayout_titulo.addWidget(self.objeto_label)
+
+        # Criação do om_label com fonte 14
+        sigla_om = self.dados.get("sigla_om", "N/A")
+        orgao_responsavel = self.dados.get("orgao_responsavel", "N/A")
+        self.uasg = self.dados.get("uasg", "N/A")
+        self.om_label = QLabel(f"{sigla_om} - {orgao_responsavel} ({ self.uasg})", self)
+
+        font_objeto = QFont()
+        font_objeto.setPointSize(12)
+        self.om_label.setFont(font_objeto)
+        self.om_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Adiciona objeto_label ao layout de labels abaixo de title_label
+        vlayout_titulo.addWidget(self.om_label)
+
+                # Cria a linha divisória com espaçamento e adiciona ao layout
+        linha_divisoria, spacer_baixo_linha = linha_divisoria_layout()
+        vlayout_titulo.addWidget(linha_divisoria)
+        vlayout_titulo.addSpacerItem(spacer_baixo_linha)
+
+        # Cria um layout horizontal para o campo "Situação"
+        situacao_om_setor_layout = QHBoxLayout()
+        spacer_situacao = QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        situacao_om_setor_layout.addSpacerItem(spacer_situacao)
+
+        situacao_label = QLabel("Situação: ")
+        situacao_label.setStyleSheet("font-size: 16px; font-weight: bold")
+        situacao_om_setor_layout.addWidget(situacao_label)
+
+        # Cria um combobox para a situação
+        self.situacao_combo = QComboBox()
+        self.situacao_combo.setStyleSheet("font-size: 14px")
+        self.situacao_combo.addItems(["Planejamento", "Aprovado", "Sessão Pública", "Homologado", "Empenhado", "Concluído", "Arquivado"])
+        self.situacao_combo.setCurrentText(self.dados.get('situacao', 'Planejamento'))
+        situacao_om_setor_layout.addWidget(self.situacao_combo)
+
+        divisao_layout = QHBoxLayout()
+        divisao_label = QLabel("  Divisão: ")
+        divisao_label.setStyleSheet("font-size: 16px; font-weight: bold")
+        divisao_layout.addWidget(divisao_label)
+
+        # Criando o QComboBox editável
+        self.setor_responsavel_combo = QComboBox()
+        self.setor_responsavel_combo .setStyleSheet("font-size: 14px")
+        # Adicionando as opções ao ComboBox
+        divisoes = [
+            "Divisão de Abastecimento",
+            "Divisão de Finanças",
+            "Divisão de Obtenção",
+            "Divisão de Pagamento",
+            "Divisão de Administração",
+            "Divisão de Subsistência"
+        ]
+        self.setor_responsavel_combo .addItems(divisoes)
+
+        # Definindo o texto atual com base nos dados fornecidos
+        self.setor_responsavel_combo .setCurrentText(self.dados.get('setor_responsavel', 'Selecione a Divisão'))
+        divisao_layout.addWidget(self.setor_responsavel_combo )
+
+        situacao_om_setor_layout.addLayout(divisao_layout)
+            # Espaçador abaixo da linha divisória
+        spacer_baixo_linha = QSpacerItem(5, 5, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        vlayout_titulo.addSpacerItem(spacer_baixo_linha)
+
+        # Adiciona o layout vertical com título e situação ao layout principal
+        layout_titulo.addLayout(vlayout_titulo)
+
+        # Espaçador para empurrar o título e o botão "Salvar" para a direita
+        spacer_right = QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        layout_titulo.addSpacerItem(spacer_right)
+
+        # Botão "Salvar" à direita
+        add_button_func("Salvar", "confirm", self.save_data, layout_titulo, self.icons, tooltip="Salvar os Dados")
+
+        return layout_titulo
+
 
     def create_navigation_layout(self):
         # Criação do frame que conterá o nav_layout e aplicará a borda inferior
@@ -379,9 +294,9 @@ class EditarDadosWindow(QMainWindow):
 
         buttons = [
             ("Informações", "Informações"),
-            ("Setor Responsável", "Setor Responsável"),
-            ("Documentos", "Documentos"),
-            ("Anexos", "Anexos"),
+            ("Etapa", "Etapa"),
+            ("Mensagens", "Mensagens"),
+            ("Envio AGU", "Envio AGU"),
             ("Resultados", "Resultados"),
         ]
         
@@ -405,23 +320,23 @@ class EditarDadosWindow(QMainWindow):
 
         nav_layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
 
-        # Verifica se as pastas existem e define o ícone e status
-        pastas_existentes = self.verificar_pastas(self.pasta_base)
-        status_text = "Pastas encontradas" if pastas_existentes else "Pastas não encontradas"
-        icon_key = "folder_v" if pastas_existentes else "folder_x"
-        icon = self.icons.get(icon_key)
-        self.status_label = QLabel(status_text)
-        self.icon_label = QLabel()
-        if icon and isinstance(icon, QIcon):
-            icon_pixmap = icon.pixmap(30, 30)
-            self.icon_label.setPixmap(icon_pixmap)
+        # # Verifica se as pastas existem e define o ícone e status
+        # pastas_existentes = self.verificar_pastas(self.pasta_base)
+        # status_text = "Pastas encontradas" if pastas_existentes else "Pastas não encontradas"
+        # icon_key = "folder_v" if pastas_existentes else "folder_x"
+        # icon = self.icons.get(icon_key)
+        # self.status_label = QLabel(status_text)
+        # self.icon_label = QLabel()
+        # if icon and isinstance(icon, QIcon):
+        #     icon_pixmap = icon.pixmap(30, 30)
+        #     self.icon_label.setPixmap(icon_pixmap)
 
-        # Layout de status com ícone e texto
-        status_layout = QHBoxLayout()
-        status_layout.addWidget(self.icon_label)
-        status_layout.addWidget(self.status_label)
-        status_layout.addStretch()
-        nav_layout.addLayout(status_layout)
+        # # Layout de status com ícone e texto
+        # status_layout = QHBoxLayout()
+        # status_layout.addWidget(self.icon_label)
+        # status_layout.addWidget(self.status_label)
+        # status_layout.addStretch()
+        # nav_layout.addLayout(status_layout)
 
         # Define o estilo para os botões dentro do nav_layout
         self.setStyleSheet("""
@@ -477,18 +392,12 @@ class EditarDadosWindow(QMainWindow):
         if widget:
             self.stacked_widget.setCurrentWidget(widget)
 
-    def setup_stacked_widgets(self):
-        """Configura os widgets para cada seção e os adiciona ao QStackedWidget"""
-        # Dados de exemplo para preencher os widgets
-        data = self.dados  # Utilize os dados reais
-        
+    def setup_stacked_widgets(self):       
         # Cria widgets para cada seção
         self.widgets_map = {
-            "Informações": self.stacked_widget_info(data),
-            "Setor Responsável": self.stacked_widget_responsaveis(data),
-            "Documentos": self.stacked_widget_documentos(data),
-            "Anexos": self.stacked_widget_anexos(data),
-            "Resultados": self.stacked_widget_pncp(data),
+            "Informações": self.stacked_widget_info(self.dados),
+            "Etapa": self.stacked_widget_etapas(self.dados),
+            "Resultados": self.stacked_widget_pncp(self.dados),
         }
 
         # Adiciona cada widget ao QStackedWidget
@@ -504,16 +413,16 @@ class EditarDadosWindow(QMainWindow):
         self.contratacao_layout = self.create_contratacao_group()
         info_contratacao_layout.addWidget(self.contratacao_layout)
 
-        classificacao_orcamentaria_formulario_layout = QVBoxLayout()
-        self.classificacao_orcamentaria_group_box = self.create_classificacao_orcamentaria_group()
+        # classificacao_orcamentaria_formulario_layout = QVBoxLayout()
+        # self.classificacao_orcamentaria_group_box = self.create_classificacao_orcamentaria_group()
         
-        self.group_box_formulario = self.setup_formularios()
+        # self.group_box_formulario = self.setup_formularios()
 
-        classificacao_orcamentaria_formulario_layout.addWidget(self.classificacao_orcamentaria_group_box)
-        classificacao_orcamentaria_formulario_layout.addWidget(self.group_box_formulario)
+        # classificacao_orcamentaria_formulario_layout.addWidget(self.classificacao_orcamentaria_group_box)
+        # classificacao_orcamentaria_formulario_layout.addWidget(self.group_box_formulario)
 
         hbox_top_layout.addLayout(info_contratacao_layout)
-        hbox_top_layout.addLayout(classificacao_orcamentaria_formulario_layout)
+        # hbox_top_layout.addLayout(classificacao_orcamentaria_formulario_layout)
 
         layout.addLayout(hbox_top_layout)
         frame.setLayout(layout)
@@ -537,6 +446,14 @@ class EditarDadosWindow(QMainWindow):
         # Conecta o sinal editingFinished para atualizar o objeto_label automaticamente
         self.objeto_edit.editingFinished.connect(self.atualizar_objeto_label)
 
+        # Campo de Objeto
+        objeto_completo_layout = QVBoxLayout()
+        objeto_completo_label = QLabel("Objeto Completo:")
+        self.objeto_completo_edit = QTextEdit(self.dados.get('objeto_completo', ''))
+        objeto_completo_layout.addWidget(objeto_completo_label)
+        objeto_completo_layout.addWidget(self.objeto_completo_edit)
+        contratacao_layout.addLayout(objeto_completo_layout)
+
         # NUP, Material e Serviço com seleção exclusiva
         nup_layout = QHBoxLayout()
         nup_label = QLabel("NUP:")
@@ -545,55 +462,7 @@ class EditarDadosWindow(QMainWindow):
         nup_layout.addWidget(self.nup_edit)
 
         contratacao_layout.addLayout(nup_layout)
-
-        # Layout para Vigência e Critério de Julgamento
-        vigencia_layout = QHBoxLayout()
-
-        # Vigência ComboBox
-        vigencia_label = QLabel("Vigência:")
-        self.vigencia_combo = QComboBox()
-        self.vigencia_combo.setEditable(True)
-        self.vigencia_combo.setStyleSheet("font-size: 14px;")  # Define o tamanho da fonte via stylesheet
-        for i in range(1, 13):
-            self.vigencia_combo.addItem(f"{i} ({number_to_text(i)}) meses")
-        vigencia = self.dados.get('vigencia', '2 (dois) meses')
-        self.vigencia_combo.setCurrentText(vigencia)
-
-        # Expansão horizontal apenas, mantendo altura padrão
-        self.vigencia_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-
-        # Adiciona Vigência ao layout
-        vigencia_layout.addWidget(vigencia_label)
-        vigencia_layout.addWidget(self.vigencia_combo)
-        contratacao_layout.addLayout(vigencia_layout)
         
-        criterio_layout = QHBoxLayout()
-        # Critério de Julgamento ComboBox
-        criterio_label = QLabel("Critério Julgamento:")
-        self.criterio_combo = QComboBox()
-        self.criterio_combo.setStyleSheet("font-size: 14px;")  # Define o tamanho da fonte via stylesheet
-        self.criterio_combo.addItems(["Menor Preço", "Maior Desconto"])
-        self.criterio_combo.setCurrentText(self.dados.get('criterio_julgamento', 'Menor Preço'))
-
-        # Expansão horizontal apenas, mantendo altura padrão
-        self.criterio_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-
-        # Adiciona Critério de Julgamento ao layout
-        criterio_layout.addWidget(criterio_label)
-        criterio_layout.addWidget(self.criterio_combo)
-
-        # Adiciona o layout ao layout principal de contratação
-        contratacao_layout.addLayout(criterio_layout)
-
-        spacer_item = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-        contratacao_layout.addItem(spacer_item)
-        
-        linha_divisoria = linha_divisoria_sem_spacer_layout()
-        contratacao_layout.addWidget(linha_divisoria)
-
-        spacer_item = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-        contratacao_layout.addItem(spacer_item)
-
         # Material e Serviço com seleção exclusiva usando RadioButtons
         material_servico_layout = QHBoxLayout()
         material_servico_label = QLabel("Material/Serviço:")
@@ -620,54 +489,6 @@ class EditarDadosWindow(QMainWindow):
 
         spacer_item = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         contratacao_layout.addItem(spacer_item)
-
-        # Configuração dos RadioButtons para "Com Disputa"
-        disputa_layout = QHBoxLayout()
-        disputa_label = QLabel("Com disputa?")
-        self.radio_disputa_sim = QRadioButton("Sim")
-        self.radio_disputa_nao = QRadioButton("Não")
-        self.disputa_group = QButtonGroup()
-        self.disputa_group.addButton(self.radio_disputa_sim)
-        self.disputa_group.addButton(self.radio_disputa_nao)
-
-        com_disputa_value = self.dados.get('com_disputa', 'Sim')
-        self.radio_disputa_sim.setChecked(com_disputa_value == 'Sim')
-        self.radio_disputa_nao.setChecked(com_disputa_value == 'Não')
-
-        disputa_layout.addWidget(disputa_label)
-        disputa_layout.addWidget(self.radio_disputa_sim)
-        disputa_layout.addWidget(self.radio_disputa_nao)
-        contratacao_layout.addLayout(disputa_layout)
-
-        spacer_item = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-        contratacao_layout.addItem(spacer_item)
-
-        # Configuração dos RadioButtons para "Pesquisa Concomitante"
-        pesquisa_layout = QHBoxLayout()
-        pesquisa_label = QLabel("Pesquisa Concomitante?")
-        self.radio_pesquisa_sim = QRadioButton("Sim")
-        self.radio_pesquisa_nao = QRadioButton("Não")
-        self.pesquisa_group = QButtonGroup()
-        self.pesquisa_group.addButton(self.radio_pesquisa_sim)
-        self.pesquisa_group.addButton(self.radio_pesquisa_nao)
-
-        pesquisa_preco_value = self.dados.get('pesquisa_preco', 'Não')
-        self.radio_pesquisa_sim.setChecked(pesquisa_preco_value == 'Sim')
-        self.radio_pesquisa_nao.setChecked(pesquisa_preco_value == 'Não')
-
-        pesquisa_layout.addWidget(pesquisa_label)
-        pesquisa_layout.addWidget(self.radio_pesquisa_sim)
-        pesquisa_layout.addWidget(self.radio_pesquisa_nao)
-        contratacao_layout.addLayout(pesquisa_layout)
-
-        spacer_item = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-        contratacao_layout.addItem(spacer_item)
-        
-        linha_divisoria = linha_divisoria_sem_spacer_layout()
-        contratacao_layout.addWidget(linha_divisoria)
-        
-        comprasnet_layout = QVBoxLayout()
-
         consulta_api = QHBoxLayout()
         api_icon = QLabel()
         api_icon.setPixmap(self.icons["api"].pixmap(30, 30))  # Ícone de tamanho 20x20
@@ -682,257 +503,10 @@ class EditarDadosWindow(QMainWindow):
         consulta_api.addSpacerItem(spacer_left)
 
         contratacao_layout.addLayout(consulta_api)
-
-        # Layout para exibir `total_homologado`
-        valor_homologado_layout = QHBoxLayout()
-        valor_homologado_label = QLabel("Valor Homologado:")
-        self.valor_homologado_soma = QLabel(str(self.total_homologado))
-        # self.valor_homologado_soma = QLabel("teste")
-        valor_homologado_layout.addWidget(valor_homologado_label)
-        valor_homologado_layout.addWidget(self.valor_homologado_soma)
-        contratacao_layout.addLayout(valor_homologado_layout)
-
-        # Layout para exibir `count_informado`
-        itens_homologados_layout = QHBoxLayout()
-        itens_homologados_label = QLabel("Quantidade de Itens Homologados:")
-        self.itens_homologados_contador = QLabel(str(self.count_informado))
-        # self.itens_homologados_contador = QLabel(("teste"))
-        itens_homologados_layout.addWidget(itens_homologados_label)
-        itens_homologados_layout.addWidget(self.itens_homologados_contador)
-        contratacao_layout.addLayout(itens_homologados_layout)
-
-        # Layout para exibir `count_anulado_fracassado`
-        fracassados_desertos_layout = QHBoxLayout()
-        fracassados_desertos_label = QLabel("Itens Fracassados/Desertos/Não definidos:")
-        self.fracassados_desertos_contador = QLabel(str(self.count_anulado_fracassado))
-        # self.fracassados_desertos_contador = QLabel("teste")
-        fracassados_desertos_layout.addWidget(fracassados_desertos_label)
-        fracassados_desertos_layout.addWidget(self.fracassados_desertos_contador)
-        contratacao_layout.addLayout(fracassados_desertos_layout)
-        
         # Configura layout do GroupBox
         contratacao_group_box.setLayout(contratacao_layout)
+
         return contratacao_group_box
-
-    def create_classificacao_orcamentaria_group(self):
-        """Cria o QGroupBox para a seção de Classificação Orçamentária."""
-        classificacao_orcamentaria_group_box = QGroupBox("Classificação Orçamentária")
-        classificacao_orcamentaria_group_box.setStyleSheet(STYLE_GROUP_BOX)
-        classificacao_orcamentaria_group_box.setFixedWidth(400)
-        
-        layout = QVBoxLayout()
-
-        # Criando cada campo de entrada e armazenando como atributo da classe
-        valor_total_layout = QHBoxLayout()
-        valor_total_label = QLabel("Valor Estimado:")
-        self.valor_total_edit = QLineEdit(str(self.dados.get('valor_total', '')))
-        valor_total_layout.addWidget(valor_total_label)
-        valor_total_layout.addWidget(self.valor_total_edit)
-        layout.addLayout(valor_total_layout)
-
-        acao_interna_layout = QHBoxLayout()
-        acao_interna_label = QLabel("Ação Interna:")
-        self.acao_interna_edit = QLineEdit(str(self.dados.get('acao_interna', '')))
-        acao_interna_layout.addWidget(acao_interna_label)
-        acao_interna_layout.addWidget(self.acao_interna_edit)
-        layout.addLayout(acao_interna_layout)
-
-        fonte_recursos_layout = QHBoxLayout()
-        fonte_recursos_label = QLabel("Fonte de Recurso (FR):")
-        self.fonte_recursos_edit = QLineEdit(str(self.dados.get('fonte_recursos', '')))
-        fonte_recursos_layout.addWidget(fonte_recursos_label)
-        fonte_recursos_layout.addWidget(self.fonte_recursos_edit)
-        layout.addLayout(fonte_recursos_layout)
-
-        natureza_despesa_layout = QHBoxLayout()
-        natureza_despesa_label = QLabel("Natureza de Despesa (ND):")
-        self.natureza_despesa_edit = QLineEdit(str(self.dados.get('natureza_despesa', '')))
-        natureza_despesa_layout.addWidget(natureza_despesa_label)
-        natureza_despesa_layout.addWidget(self.natureza_despesa_edit)
-        layout.addLayout(natureza_despesa_layout)
-
-        unidade_orcamentaria_layout = QHBoxLayout()
-        unidade_orcamentaria_label = QLabel("Unidade Orçamentária (UO):")
-        self.unidade_orcamentaria_edit = QLineEdit(str(self.dados.get('unidade_orcamentaria', '')))
-        unidade_orcamentaria_layout.addWidget(unidade_orcamentaria_label)
-        unidade_orcamentaria_layout.addWidget(self.unidade_orcamentaria_edit)
-        layout.addLayout(unidade_orcamentaria_layout)
-
-        ptres_layout = QHBoxLayout()
-        ptres_label = QLabel("PTRES:")
-        self.ptres_edit = QLineEdit(str(self.dados.get('ptres', '')))
-        ptres_layout.addWidget(ptres_label)
-        ptres_layout.addWidget(self.ptres_edit)
-        layout.addLayout(ptres_layout)
-
-        # Adicionando o rádio button de Atividade de Custeio
-        custeio_layout = QHBoxLayout()
-        custeio_label = QLabel("Atividade de Custeio?")
-        self.radio_custeio_sim = QRadioButton("Sim")
-        self.radio_custeio_nao = QRadioButton("Não")
-        custeio_group = QButtonGroup()  # Grupo exclusivo para o conjunto de botões
-        custeio_group.addButton(self.radio_custeio_sim)
-        custeio_group.addButton(self.radio_custeio_nao)
-
-        # Define o estado inicial com base nos dados
-        atividade_custeio_value = self.dados.get('atividade_custeio', 'Não')
-        self.radio_custeio_sim.setChecked(atividade_custeio_value == 'Sim')
-        self.radio_custeio_nao.setChecked(atividade_custeio_value == 'Não')
-
-        custeio_layout.addWidget(custeio_label)
-        custeio_layout.addWidget(self.radio_custeio_sim)
-        custeio_layout.addWidget(self.radio_custeio_nao)
-        
-        # Adiciona o layout do rádio button ao layout principal
-        layout.addLayout(custeio_layout)
-        classificacao_orcamentaria_group_box.setLayout(layout)
-        
-        return classificacao_orcamentaria_group_box
-
-    def create_dados_responsavel_contratacao_group(self):
-        """Cria o layout para o responsável pela contratação usando programação funcional."""
-        layout = QVBoxLayout()
-
-        par_layout = QHBoxLayout()
-     
-        cp_label = QLabel("Número da CP:")
-        self.cp_edit = QLineEdit(str(self.dados.get('comunicacao_padronizada', '')))
-        par_layout.addWidget(cp_label)
-        par_layout.addWidget(self.cp_edit)
-        layout.addLayout(par_layout)
-
-        par_label = QLabel("Meta do PAR:")
-        self.par_edit = QLineEdit(str(self.dados.get('cod_par', '')))
-        par_layout.addWidget(par_label)
-        par_layout.addWidget(self.par_edit)
-        layout.addLayout(par_layout)
-
-        prioridade = QLabel("Prioridade:")
-        self.prioridade_combo = QComboBox()
-        self.prioridade_combo.addItems(["Necessário", "Urgente", "Desejável"])
-        self.prioridade_combo.setCurrentText(self.dados.get('prioridade_par', 'Necessário'))
-        par_layout.addWidget(prioridade)
-        par_layout.addWidget(self.prioridade_combo)        
-        layout.addLayout(par_layout)
-                
-        # Endereço
-        endereco = QLabel("Endereço:")
-        self.endereco_edit = QLineEdit(self.dados.get('endereco', ''))
-        endereco_cep_layout = QHBoxLayout()
-        endereco_cep_layout.addWidget(endereco)
-        endereco_cep_layout.addWidget(self.endereco_edit)
-        layout.addLayout(endereco_cep_layout)
- 
-        # E-mail
-        email = QLabel("E-mail:")
-        self.email_edit = QLineEdit(self.dados.get('email', ''))
-        email_layout = QHBoxLayout()
-        email_layout.addWidget(email)
-        email_layout.addWidget(self.email_edit)
-        layout.addLayout(email_layout)
-
-        # CEP e Telefone
-        cep_telefone_layout = QHBoxLayout()
-        cep_label = QLabel("CEP:")
-        self.cep_edit = QLineEdit(str(self.dados.get('cep', '')))
-        cep_telefone_layout.addWidget(cep_label)
-        cep_telefone_layout.addWidget(self.cep_edit)
-
-        telefone_label = QLabel("Telefone:")
-        self.telefone_edit = QLineEdit(self.dados.get('telefone', ''))
-        cep_telefone_layout.addWidget(telefone_label)
-        cep_telefone_layout.addWidget(self.telefone_edit)
-        layout.addLayout(cep_telefone_layout)
-
-
-        # Dias e Horário para Recebimento
-        dias_layout = QHBoxLayout()
-        dias_label = QLabel("Dias para Recebimento:")
-        self.dias_edit = QLineEdit(self.dados.get('dias_recebimento', 'Segunda à Sexta'))
-        dias_layout.addWidget(dias_label)
-        dias_layout.addWidget(self.dias_edit)
-        layout.addLayout(dias_layout)
-
-        horario_layout = QHBoxLayout()
-        horario_label = QLabel("Horário para Recebimento:")
-        self.horario_edit = QLineEdit(self.dados.get('horario_recebimento', '09 às 11h20 e 14 às 16h30'))
-        horario_layout.addWidget(horario_label)
-        horario_layout.addWidget(self.horario_edit)
-        layout.addLayout(horario_layout)
-
-        # Justificativa
-        justificativa_label = QLabel("Justificativa para a contratação:")
-        justificativa_label.setStyleSheet("font-size: 12pt;")
-        self.justificativa_edit = QTextEdit(self.dados.get("justificativa", ""))
-        layout.addWidget(justificativa_label)
-        layout.addWidget(self.justificativa_edit)
-        
-        return layout
-    
-    def stacked_widget_responsaveis(self, data):
-        frame = QFrame()
-        layout = QVBoxLayout()
-        self.setor_responsavel_layout = self.create_dados_responsavel_contratacao_group()
-        layout.addLayout(self.setor_responsavel_layout)
-        frame.setLayout(layout)
-        return frame
-
-    def stacked_widget_documentos(self, data):
-        frame = QFrame()
-        layout = QVBoxLayout()
-        # Cria e adiciona o QGroupBox "Dados do Setor Responsável pela Contratação"
-        botao_documentos = self.create_gerar_documentos_group()
-        sigdem_group = self.create_GrupoSIGDEM()
-        utilidade_group = self.create_utilidades_group()
-        layout.addLayout(botao_documentos)
-        layout.addWidget(sigdem_group)
-        layout.addLayout(utilidade_group)
-
-        # Define o layout para o frame
-        frame.setLayout(layout)        
-        return frame
-    
-    def create_gerar_documentos_group(self):
-        gerar_documentos_layout = QVBoxLayout()
-
-        icon_pdf = QIcon(self.icons["pdf"])
-        icon_copy = QIcon(self.icons["copy_1"])
-
-        buttons_info = [
-            ("          Autorização para Abertura      ", self.handle_gerar_autorizacao, self.handle_gerar_autorizacao_sidgem),
-            (" Comunicação Padronizada e anexos", self.handle_gerar_comunicacao_padronizada, self.handle_gerar_comunicacao_padronizada_sidgem),
-            ("              Aviso de Dispensa               ", self.handle_gerar_aviso_dispensa, self.handle_gerar_aviso_dispensa_sidgem)
-        ]
-
-        for text, visualizar_callback, sigdem_callback in buttons_info:
-            button_layout = QHBoxLayout()
-
-            visualizar_pdf_button = self.create_button(
-                text,
-                icon=icon_pdf,
-                callback=visualizar_callback,
-                tooltip_text="Clique para visualizar o PDF",
-                button_size=QSize(310, 40),
-                icon_size=QSize(40, 40),
-                font_size=18 
-            )
-
-            sigdem_button = self.create_button(
-                "",
-                icon=icon_copy,
-                callback=sigdem_callback,
-                tooltip_text="Clique para copiar",
-                button_size=QSize(40, 40),
-                icon_size=QSize(30, 30),
-                font_size=18 
-            )
-
-            button_layout.addWidget(visualizar_pdf_button)
-            button_layout.addWidget(sigdem_button)
-
-            gerar_documentos_layout.addLayout(button_layout)
-
-        return gerar_documentos_layout
 
     def create_GrupoSIGDEM(self):       
         grupoSIGDEM = QGroupBox("SIGDEM")
@@ -1091,6 +665,25 @@ class EditarDadosWindow(QMainWindow):
         
         return btn
 
+    def carregar_referencias(self):       
+        # Referências aos RadioButtons para material_servico, com_disputa e pesquisa_preco
+        self.radio_material = None
+        self.radio_servico = None
+        self.radio_disputa_sim = None
+        self.radio_disputa_nao = None
+        self.radio_pesquisa_sim = None
+        self.radio_pesquisa_nao = None
+        self.selected_button = None
+        self.valor_total_edit = None
+        # Inicialização do stacked_widget com estilo aplicado
+        self.stacked_widget = QStackedWidget(self)
+        self.stacked_widget.setStyleSheet("""
+            QLabel { font-size: 16px; }
+            QCheckBox { font-size: 16px; }
+            QLineEdit { font-size: 14px; }
+        """)
+        # Label de status para mostrar atualizações de consolidação
+        self.status_label = QLabel(self)
     
     def atualizar_status_label(self, status_message, icon_path):
         # Atualiza o texto do status_label com a mensagem passada
@@ -1116,6 +709,50 @@ class EditarDadosWindow(QMainWindow):
         frame.setLayout(layout)        
         return frame
 
+    def stacked_widget_etapas(self, data):
+        frame = QFrame()
+        layout = QVBoxLayout()
+
+        label = QLabel("Etapas")
+        layout.addWidget(label)
+
+        # Carregar o arquivo CONTROLE_PRAZOS
+        try:
+            with open(CONTROLE_PRAZOS, 'r', encoding='utf-8') as f:
+                controle_prazos = json.load(f)
+        except Exception as e:
+            layout.addWidget(QLabel(f"Erro ao carregar CONTROLE_PRAZOS: {str(e)}"))
+            frame.setLayout(layout)
+            return frame
+
+        # Procurar o id_processo em controle_prazos
+        id_processo = data.get('id_processo', None)
+        if id_processo and id_processo in controle_prazos:
+            etapas = controle_prazos[id_processo]
+
+            # Exibir as etapas no layout
+            for etapa in etapas:
+                situacao = etapa.get("situacao", "N/A")
+                data_inicial = etapa.get("data_inicial", "N/A")
+                data_final = etapa.get("data_final", "N/A")
+                dias_na_etapa = etapa.get("dias_na_etapa", 0)
+                comentario = etapa.get("comentario", "")
+
+                etapa_label = QLabel(
+                    f"Situação: {situacao}\n"
+                    f"Data Inicial: {data_inicial}\n"
+                    f"Data Final: {data_final}\n"
+                    f"Dias na Etapa: {dias_na_etapa}\n"
+                    f"Comentário: {comentario}"
+                )
+                etapa_label.setWordWrap(True)
+                layout.addWidget(etapa_label)
+        else:
+            layout.addWidget(QLabel("Nenhuma etapa encontrada para o processo."))
+
+        frame.setLayout(layout)
+        return frame
+    
     def stacked_widget_pncp(self, data):
         frame = QFrame()
         layout = QVBoxLayout()
@@ -1124,151 +761,8 @@ class EditarDadosWindow(QMainWindow):
         frame.setLayout(layout)
         return frame
 
-    def setup_layout_titulo(self):
-        """Configura o layout do título com o ID do processo e a seção de consulta API."""
-        layout_titulo = QHBoxLayout()
-
-        spacer_left = QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        layout_titulo.addSpacerItem(spacer_left)
-
-        # Cria um layout vertical para o título e um layout horizontal para ícones e texto
-        vlayout_titulo = QVBoxLayout()
-
-        # Layout horizontal para ícone esquerdo, título e ícone direito
-        hlayout_titulo = QHBoxLayout()
-
-        hlayout_titulo.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
-        # Ícone à esquerda
-        brasil_icon = QIcon(self.icons.get("brasil_2", None))
-        image_label_esquerda = QLabel()
-        image_label_esquerda.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        image_label_esquerda.setPixmap(brasil_icon.pixmap(30, 30))
-        hlayout_titulo.addWidget(image_label_esquerda)
-
-        # Texto do título centralizado
-        tipo = self.dados.get("tipo", "N/A")
-        numero = self.dados.get("numero", "N/A")
-        ano = self.dados.get("ano", "N/A")
-        title_label = QLabel(f"{tipo} nº {numero}/{ano}", self)
-
-        # Define o tamanho da fonte para 18 e em negrito
-        font_title = QFont()
-        font_title.setPointSize(18)
-        font_title.setBold(True)
-        title_label.setFont(font_title)
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hlayout_titulo.addWidget(title_label)
-
-        # Ícone à direita
-        acanto_icon = QIcon(self.icons.get("acanto", None))
-        image_label_direita = QLabel()
-        image_label_direita.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        image_label_direita.setPixmap(acanto_icon.pixmap(40, 40))
-        hlayout_titulo.addWidget(image_label_direita)
-
-        # Adiciona outro espaçador para empurrar o ícone da direita
-        hlayout_titulo.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
-
-        # Adiciona o layout horizontal ao layout vertical do título
-        vlayout_titulo.addLayout(hlayout_titulo)
-
-        # Criação do objeto_label com fonte 14
-        objeto = self.dados.get("objeto", "N/A")
-        material_servico = self.dados.get("material_servico", "N/A")
-        self.objeto_label = QLabel(f"{objeto} ({material_servico})", self)
-
-        font_objeto = QFont()
-        font_objeto.setPointSize(12)
-        self.objeto_label.setFont(font_objeto)
-        self.objeto_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Adiciona objeto_label ao layout de labels abaixo de title_label
-        vlayout_titulo.addWidget(self.objeto_label)
-
-        # Criação do om_label com fonte 14
-        sigla_om = self.dados.get("sigla_om", "N/A")
-        orgao_responsavel = self.dados.get("orgao_responsavel", "N/A")
-        self.uasg = self.dados.get("uasg", "N/A")
-        self.om_label = QLabel(f"{sigla_om} - {orgao_responsavel} ({ self.uasg})", self)
-
-        font_objeto = QFont()
-        font_objeto.setPointSize(12)
-        self.om_label.setFont(font_objeto)
-        self.om_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Adiciona objeto_label ao layout de labels abaixo de title_label
-        vlayout_titulo.addWidget(self.om_label)
-
-                # Cria a linha divisória com espaçamento e adiciona ao layout
-        linha_divisoria, spacer_baixo_linha = linha_divisoria_layout()
-        vlayout_titulo.addWidget(linha_divisoria)
-        vlayout_titulo.addSpacerItem(spacer_baixo_linha)
-
-        # Cria um layout horizontal para o campo "Situação"
-        situacao_om_setor_layout = QHBoxLayout()
-        spacer_situacao = QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        situacao_om_setor_layout.addSpacerItem(spacer_situacao)
-
-        situacao_label = QLabel("Situação: ")
-        situacao_label.setStyleSheet("font-size: 16px; font-weight: bold")
-        situacao_om_setor_layout.addWidget(situacao_label)
-
-        # Cria um combobox para a situação
-        self.situacao_combo = QComboBox()
-        self.situacao_combo.setStyleSheet("font-size: 14px")
-        self.situacao_combo.addItems(["Planejamento", "Aprovado", "Sessão Pública", "Homologado", "Empenhado", "Concluído", "Arquivado"])
-        self.situacao_combo.setCurrentText(self.dados.get('situacao', 'Planejamento'))
-        situacao_om_setor_layout.addWidget(self.situacao_combo)
-
-        om_layout, self.om_combo = create_selecao_om_layout(
-            self.database_path,
-            dados=self.dados,
-            load_sigla_om_callback=load_sigla_om,
-            on_om_changed_callback=lambda om_combo, dados, db_path: on_om_changed(self, om_combo, dados, db_path)
-        )
-
-        situacao_om_setor_layout.addLayout(om_layout)
-        vlayout_titulo.addLayout(situacao_om_setor_layout)
-
-        divisao_layout = QHBoxLayout()
-        divisao_label = QLabel("  Divisão: ")
-        divisao_label.setStyleSheet("font-size: 16px; font-weight: bold")
-        divisao_layout.addWidget(divisao_label)
-
-        # Criando o QComboBox editável
-        self.setor_responsavel_combo = QComboBox()
-        self.setor_responsavel_combo .setStyleSheet("font-size: 14px")
-        # Adicionando as opções ao ComboBox
-        divisoes = [
-            "Divisão de Abastecimento",
-            "Divisão de Finanças",
-            "Divisão de Obtenção",
-            "Divisão de Pagamento",
-            "Divisão de Administração",
-            "Divisão de Subsistência"
-        ]
-        self.setor_responsavel_combo .addItems(divisoes)
-
-        # Definindo o texto atual com base nos dados fornecidos
-        self.setor_responsavel_combo .setCurrentText(self.dados.get('setor_responsavel', 'Selecione a Divisão'))
-        divisao_layout.addWidget(self.setor_responsavel_combo )
-
-        situacao_om_setor_layout.addLayout(divisao_layout)
-            # Espaçador abaixo da linha divisória
-        spacer_baixo_linha = QSpacerItem(5, 5, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-        vlayout_titulo.addSpacerItem(spacer_baixo_linha)
-
-        # Adiciona o layout vertical com título e situação ao layout principal
-        layout_titulo.addLayout(vlayout_titulo)
-
-        # Espaçador para empurrar o título e o botão "Salvar" para a direita
-        spacer_right = QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        layout_titulo.addSpacerItem(spacer_right)
-
-        # Botão "Salvar" à direita
-        add_button_func("Salvar", "confirm", self.save_data, layout_titulo, self.icons, tooltip="Salvar os Dados")
-
-        return layout_titulo
+    def save_data(self):
+        pass
 
     def create_sessao_publica_group(self):
         # Criação do QGroupBox para a seção Sessão Pública

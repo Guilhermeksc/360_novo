@@ -11,14 +11,22 @@ class LicitacaoWidget(QMainWindow):
     deleteItem = pyqtSignal()
     dataManager = pyqtSignal()
     controlePrazo = pyqtSignal()
+    rowDoubleClicked = pyqtSignal(dict)
 
-    def __init__(self, icons, model, database_path, parent=None):
+    def __init__(self, icons, licitacao_model, database_path, parent=None):
         super().__init__(parent)
         self.icons = icons
-        self.model = model
+        self.licitacao_model = licitacao_model  # Armazena a instância de LicitacaoModel
         self.database_path = database_path
         self.selected_row_data = None
-        
+
+        # Verifica se o modelo está inicializado
+        if self.licitacao_model.model is None:
+            # Se não estiver, inicializa o modelo
+            self.licitacao_model.setup_model("controle_licitacao")
+
+        self.model = self.licitacao_model.model
+
         # Inicializa o proxy_model e configura o filtro
         self.proxy_model = MultiColumnFilterProxyModel(self)
         self.proxy_model.setSourceModel(self.model)
@@ -45,9 +53,9 @@ class LicitacaoWidget(QMainWindow):
         self.configure_table_model()
         self.adjust_columns()
 
-    def connect_editar_dados_window(self, editar_dados_window):
-        # Conecta o sinal do EditarDadosWindow ao próprio widget
-        editar_dados_window.request_consulta_api.connect(self.request_consulta_api.emit)
+    # def connect_editar_dados_window(self, editar_dados_window):
+    #     # Conecta o sinal do EditarDadosWindow ao próprio widget
+    #     editar_dados_window.request_consulta_api.connect(self.request_consulta_api.emit)
         
     def on_table_double_click(self, index):
         row = self.proxy_model.mapToSource(index).row()
@@ -86,8 +94,10 @@ class LicitacaoWidget(QMainWindow):
         add_button("Controle", "calendar", self.controlePrazo, layout, self.icons, tooltip="Controle de Prazos" )
 
     def refresh_model(self):
-        """Atualiza a tabela com os dados mais recentes do banco de dados."""
-        self.model.select()
+        """Recarrega os dados do modelo e atualiza a tabela."""
+        self.licitacao_model.update_order_column()
+        self.model.select()  # Recarrega os dados do banco de dados
+        self.table_view.reset() 
 
     def setup_table_view(self):
         self.table_view = QTableView(self)
@@ -95,7 +105,7 @@ class LicitacaoWidget(QMainWindow):
         self.table_view.verticalHeader().setVisible(False)
         self.table_view.doubleClicked.connect(self.on_table_double_click)
         
-        # Configurações adicionais de estilo e comportamento
+                # Configurações adicionais de estilo e comportamento
         self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self.table_view.setSelectionMode(QTableView.SelectionMode.SingleSelection)
 
@@ -125,21 +135,21 @@ class LicitacaoWidget(QMainWindow):
         self.update_column_headers()
         self.hide_unwanted_columns()
 
-    def update_column_headers(self):
-        titles = {0: "Status", 1: "ID Processo", 5: "NUP", 7: "Objeto", 17: "OM"}
-        for column, title in titles.items():
-            self.model.setHeaderData(column, Qt.Orientation.Horizontal, title)
-
-    def hide_unwanted_columns(self):
-        visible_columns = {0, 1, 5, 7, 17}
-        for column in range(self.model.columnCount()):
-            if column not in visible_columns:
-                self.table_view.hideColumn(column)
-
     def adjust_columns(self):
         # Ajustar automaticamente as larguras das colunas ao conteúdo
         self.table_view.resizeColumnsToContents()
         QTimer.singleShot(1, self.apply_custom_column_sizes) 
+
+    def update_column_headers(self):
+        titles = {0: "Status", 1: "ID Processo", 5: "NUP", 7: "Objeto", 11: "OM", 13: "Valor", 15: "Ordem"}
+        for column, title in titles.items():
+            self.model.setHeaderData(column, Qt.Orientation.Horizontal, title)
+
+    def hide_unwanted_columns(self):
+        visible_columns = {0, 1, 5, 7, 11, 13}
+        for column in range(self.model.columnCount()):
+            if column not in visible_columns:
+                self.table_view.hideColumn(column)
 
     def apply_custom_column_sizes(self):
         header = self.table_view.horizontalHeader()
@@ -147,12 +157,14 @@ class LicitacaoWidget(QMainWindow):
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(7, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(17, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(11, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(13, QHeaderView.ResizeMode.Fixed)
 
-        header.resizeSection(0, 150)        
+        header.resizeSection(0, 205)
         header.resizeSection(1, 130)
-        header.resizeSection(5, 170)
-        header.resizeSection(17, 100)
+        header.resizeSection(5, 165)
+        header.resizeSection(11, 90)
+        header.resizeSection(13, 140)
 
 class CenterAlignDelegate(QStyledItemDelegate):
     def initStyleOption(self, option, index):
@@ -172,9 +184,15 @@ class CustomItemDelegate(QStyledItemDelegate):
             # Define o mapeamento de ícones
             icon_key = {
                 'Planejamento': 'business',
+                'Consolidação de Demanda': 'jigsaw',
+                'Montagem do Processo': 'montagem',
+                'Nota Técnica': 'deal',
+                'AGU': 'agu',
                 'Aprovado': 'verify_menu',
+                'Assinatura Contrato': 'sign',
+                'Recomendações AGU': 'report',
+                'Pré-Publicação': 'loading_table',
                 'Sessão Pública': 'session',
-                'Homologado': 'deal',
                 'Empenhado': 'emenda_parlamentar',
                 'Concluído': 'aproved',
                 'Arquivado': 'archive'

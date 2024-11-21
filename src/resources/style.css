@@ -196,7 +196,7 @@ QScrollBar:vertical, QScrollBar:horizontal {
 
 /* Estilo do handle da barra de rolagem */
 QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
-    background-color: #8BE9D9;
+    background-color: #8AB4F7;
     min-height: 20px;
     min-width: 20px;
     border-radius: 5px;
@@ -212,8 +212,8 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
     background-color: #181928;
     border: 1px solid #3C3C5A;
-    width: 15px;
-    height: 15px;
+    width: 5px;
+    height: 5px;
 }
 
 /* Efeito ao passar o mouse sobre as setas */

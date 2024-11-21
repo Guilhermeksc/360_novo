@@ -149,7 +149,7 @@ class AddItemDialog(QDialog):
 
         material_servico = "Material" if self.material_radio.isChecked() else "Serviço"
         tipo_de_processo = self.tipo_cb.currentText()
-        atividade_custeio = "Não"  
+
 
         data = {
             'tipo': tipo_de_processo,
@@ -161,12 +161,16 @@ class AddItemDialog(QDialog):
             'orgao_responsavel': orgao_responsavel,
             'uasg': uasg,
             'material_servico': material_servico,
-            'atividade_custeio': atividade_custeio
         }
 
         # Mapeamento do tipo de processo para o nome interno
         tipo_map = {
             "Pregão Eletrônico (PE)": ("PE", "Pregão Eletrônico"),
+            "Concorrência": ("CC", "Concorrência"),
+            "Termo de Justificativa de Dispensa de Licitação": ("TJDL", "Termo de Justificativa de Dispensa de Licitação"),
+            "Termo de Justificativa de Inexigibilidade de Licitação": ("TJIL", "Termo de Justificativa de Inexigibilidade de Licitação"),
+            "Chamada Pública para Agricultura Familiar": ("AF", "Chamada Pública"),
+            "Adesão a Ata de Registro de Preços": ("AD", "Adesão a Ata de Registro de Preços"),
         }
         
         if tipo_de_processo in tipo_map:

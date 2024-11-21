@@ -132,7 +132,7 @@ class LicitacaoModel(QObject):
         print(f"Dados inseridos com sucesso na tabela '{table_name}'.")
 
     def adjust_table_structure(self):
-        """Verifica e cria a tabela 'controle_licitacao' se não existir."""
+        """Verifica e cria a tabela 'controle_licitacao' se não existir, e adiciona a coluna 'order' se necessário."""
         query = QSqlQuery(self.db)
         if not query.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='controle_licitacao'"):
             print("Erro ao verificar existência da tabela:", query.lastError().text())
@@ -141,6 +141,20 @@ class LicitacaoModel(QObject):
             self.create_table_if_not_exists()
         else:
             print("Tabela 'controle_licitacao' existe. Verificando estrutura da coluna...")
+
+        # Verificar se a coluna 'order' existe
+        if not query.exec("PRAGMA table_info(controle_licitacao)"):
+            print("Erro ao obter informações da tabela:", query.lastError().text())
+        column_exists = False
+        while query.next():
+            if query.value(1) == 'order':
+                column_exists = True
+                break
+        if not column_exists:
+            # Adicionar a coluna 'order'
+            print("Adicionando coluna 'order' na tabela 'controle_licitacao'")
+            if not query.exec("ALTER TABLE controle_licitacao ADD COLUMN 'order' INTEGER"):
+                print("Erro ao adicionar a coluna 'order':", query.lastError().text())
 
     def save_api_data_to_database(self, data_api):
         # Obtém o valor de 'numeroControlePNCP' para nome da tabela
@@ -223,28 +237,12 @@ class LicitacaoModel(QObject):
                 material_servico VARCHAR(30),
                 objeto TEXT,
                 objeto_completo TEXT,
-                vigencia TEXT, 
                 uasg TEXT, 
                 orgao_responsavel TEXT,
                 sigla_om TEXT,
-                setor_responsavel TEXT, 
-                data_sessao TEXT,
-                agente_contratacao TEXT, 
-                criterio_julgamento TEXT,
-                atividade_custeio TEXT,
-                previsao_contratacao TEXT,
-                coordenador_planejamento TEXT,
-                ordenador_despesas TEXT,
-                agente_fiscal TEXT,
-                gerente_de_credito TEXT,
-                justificativa TEXT,
-                cep TEXT,
-                endereco TEXT, 
-                email TEXT,
-                telefone TEXT,
-                dias_para_recebimento TEXT,
-                horario_para_recebimento TEXT,
-                srp TEXT             
+                setor_responsavel TEXT,
+                valor_total REAL, 
+                srp TEXT         
             )
         """):
             print("Falha ao criar a tabela 'controle_licitacao':", query.lastError().text())
@@ -252,17 +250,43 @@ class LicitacaoModel(QObject):
             print("Tabela 'controle_licitacao' criada com sucesso.")
 
     def setup_model(self, table_name, editable=False):
-        """Configura o modelo SQL para a tabela especificada."""
-        # Passa o database_licitacao_manager para o modelo personalizado
         self.model = CustomSqlTableModel(parent=self, db=self.db, database_manager=self.database_licitacao_manager, non_editable_columns=[4, 8, 10, 13])
         self.model.setTable(table_name)
-        
+
+        # Defina a ordenação pela coluna 'order' (substitua '15' pelo índice correto da coluna 'order')
+        order_column_index = self.model.fieldIndex('order')
+        if order_column_index != -1:
+            self.model.setSort(order_column_index, Qt.SortOrder.AscendingOrder)
+
         if editable:
             self.model.setEditStrategy(QSqlTableModel.EditStrategy.OnFieldChange)
-        
-        self.model.select()
+
+        self.update_order_column()  # Atualiza a coluna 'order'
+        self.model.select()  # Recarrega os dados após a atualização
         return self.model
 
+    def update_order_column(self):
+        """Atualiza a coluna 'order' na tabela 'controle_licitacao' com base na coluna 'situacao'."""
+        dict_situacao_order = {
+            "Assinatura Contrato": 1,
+            "Sessão Pública": 2,
+            "Pré-Publicação": 3,
+            "Recomendações AGU": 4,
+            "AGU": 5,
+            "Nota Técnica": 6,
+            "Montagem do Processo": 7,
+            "Consolidação de Demanda": 8,
+            "Planejamento": 9,
+            "Concluído": 10
+        }
+        with self.database_licitacao_manager as conn:
+            cursor = conn.cursor()
+            for situacao, order_value in dict_situacao_order.items():
+                cursor.execute("UPDATE controle_licitacao SET 'order' = ? WHERE situacao = ?", (order_value, situacao))
+            # Definir 'order' como 999 para situações não mapeadas
+            cursor.execute("UPDATE controle_licitacao SET 'order' = 999 WHERE situacao NOT IN (%s)" % ','.join('?'*len(dict_situacao_order)), tuple(dict_situacao_order.keys()))
+            conn.commit()
+            
     def get_data(self, table_name):
         """Retorna todos os dados da tabela especificada."""
         return self.database_licitacao_manager.fetch_all(f"SELECT * FROM {table_name}")
@@ -271,13 +295,13 @@ class LicitacaoModel(QObject):
         print("Dados recebidos para salvar:", data)
         upsert_sql = '''
         INSERT INTO controle_licitacao (
-            situacao, id_processo, tipo, numero, ano, nup, material_servico, objeto,
-            objeto_completo, vigencia, uasg, orgao_responsavel, sigla_om, setor_responsavel,
-            data_sessao, agente_contratacao, criterio_julgamento, atividade_custeio,
-            previsao_contratacao, coordenador_planejamento, ordenador_despesas, agente_fiscal,
-            gerente_de_credito, justificativa, cep, endereco, email, telefone,
-            dias_para_recebimento, horario_para_recebimento, srp
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            situacao, id_processo, tipo, numero, ano, 
+            nup, material_servico, objeto, objeto_completo, uasg, 
+            orgao_responsavel, sigla_om, setor_responsavel, valor_total, srp
+        ) VALUES (
+        ?, ?, ?, ?, ?, 
+        ?, ?, ?, ?, ?, 
+        ?, ?, ?, ?, ?)
         ON CONFLICT(id_processo) DO UPDATE SET
             situacao=excluded.situacao,
             tipo=excluded.tipo,
@@ -287,27 +311,11 @@ class LicitacaoModel(QObject):
             material_servico=excluded.material_servico,
             objeto=excluded.objeto,
             objeto_completo=excluded.objeto_completo,
-            vigencia=excluded.vigencia,
             uasg=excluded.uasg,
             orgao_responsavel=excluded.orgao_responsavel,
             sigla_om=excluded.sigla_om,
             setor_responsavel=excluded.setor_responsavel,
-            data_sessao=excluded.data_sessao,
-            agente_contratacao=excluded.agente_contratacao,
-            criterio_julgamento=excluded.criterio_julgamento,
-            atividade_custeio=excluded.atividade_custeio,
-            previsao_contratacao=excluded.previsao_contratacao,
-            coordenador_planejamento=excluded.coordenador_planejamento,
-            ordenador_despesas=excluded.ordenador_despesas,
-            agente_fiscal=excluded.agente_fiscal,
-            gerente_de_credito=excluded.gerente_de_credito,
-            justificativa=excluded.justificativa,
-            cep=excluded.cep,
-            endereco=excluded.endereco,
-            email=excluded.email,
-            telefone=excluded.telefone,
-            dias_para_recebimento=excluded.dias_para_recebimento,
-            horario_para_recebimento=excluded.horario_para_recebimento,
+            valor_total=excluded.valor_total,
             srp=excluded.srp
         '''
 
@@ -332,27 +340,11 @@ class LicitacaoModel(QObject):
                     data.get('material_servico'),
                     data.get('objeto'),
                     data.get('objeto_completo'),
-                    data.get('vigencia'),
                     data.get('uasg'),
                     data.get('orgao_responsavel'),
                     data.get('sigla_om'),
-                    data.get('setor_responsavel'),
-                    data.get('data_sessao'),
-                    data.get('agente_contratacao'),
-                    data.get('criterio_julgamento'),
-                    data.get('atividade_custeio'),
-                    data.get('previsao_contratacao'),
-                    data.get('coordenador_planejamento'),
-                    data.get('ordenador_despesas'),
-                    data.get('agente_fiscal'),
-                    data.get('gerente_de_credito'),
-                    data.get('justificativa'),
-                    data.get('cep'),
-                    data.get('endereco'),
-                    data.get('email'),
-                    data.get('telefone'),
-                    data.get('dias_para_recebimento'),
-                    data.get('horario_para_recebimento'),
+                    data.get('setor_responsavel'),                
+                    data.get('valor_total'),
                     data.get('srp')
                 ))
                 conn.commit()
@@ -372,17 +364,14 @@ class CustomSqlTableModel(QSqlTableModel):
         
         # Define os nomes das colunas
         self.column_names = [
-            "situacao", "id_processo", "tipo", "numero", "ano", "nup", "material_servico", "objeto", "objeto_completo",
-            "vigencia", "uasg", "orgao_responsavel", "sigla_om", "setor_responsavel", "data_sessao", "agente_contratacao",
-            "criterio_julgamento", "atividade_custeio", "previsao_contratacao", "coordenador_planejamento", "ordenador_despesas",
-            "agente_fiscal", "gerente_de_credito", "justificativa", "cep", "endereco", "email", "telefone",
-            "dias_para_recebimento", "horario_para_recebimento", "srp"            
+            "situacao", "id_processo", "tipo", "numero", "ano", 
+            "nup", "material_servico", "objeto", "objeto_completo", "uasg", 
+            "orgao_responsavel", "sigla_om", "setor_responsavel", "valor", "srp", "order"            
         ]
 
     def flags(self, index):
-        if index.column() in self.non_editable_columns:
-            return super().flags(index) & ~Qt.ItemFlag.ItemIsEditable  # Remove a permissão de edição
-        return super().flags(index)
+        return super().flags(index) & ~Qt.ItemFlag.ItemIsEditable
+
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         # Verifica se a coluna deve ser não editável e ajusta o retorno para DisplayRole
@@ -390,3 +379,19 @@ class CustomSqlTableModel(QSqlTableModel):
             return super().data(index, role)
 
         return super().data(index, role)
+    
+    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+        if role == Qt.ItemDataRole.EditRole:
+            column_name = self.headerData(index.column(), Qt.Orientation.Horizontal)
+            id_processo = self.index(index.row(), self.fieldIndex("id_processo")).data()
+
+            query = QSqlQuery(self.database())
+            query.prepare(f"UPDATE controle_licitacao SET {column_name} = :value WHERE id_processo = :id_processo")
+            query.bindValue(":value", value)
+            query.bindValue(":id_processo", id_processo)
+
+            if not query.exec():
+                print(f"Erro ao atualizar o banco de dados: {query.lastError().text()}")
+                return False
+
+        return super().setData(index, value, role)    

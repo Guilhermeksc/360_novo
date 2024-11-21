@@ -16,6 +16,7 @@ DATA_CONTRATOS_PATH = DATABASE_DIR / "controle_contrato.db"
 CONTROLE_ASS_CONTRATOS_DADOS = DATABASE_DIR / "controle_assinatura.db"
 CONTROLE_DADOS = DATABASE_DIR / "controle_dados.db"
 
+CONTROLE_PRAZOS = BASE_DIR / "controle_status.json"
 CONFIG_FILE = BASE_DIR / "config.json"
 PRE_DEFINICOES_JSON = BASE_DIR / "pre_definicioes.json"
 AGENTES_RESPONSAVEIS_FILE = BASE_DIR / "agentes_responsaveis.json"

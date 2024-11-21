@@ -15,9 +15,12 @@ class MultiColumnFilterProxyModel(QSortFilterProxyModel):
         for column in range(self.sourceModel().columnCount()):
             index = self.sourceModel().index(source_row, column, source_parent)
             data = self.sourceModel().data(index, Qt.ItemDataRole.DisplayRole)
-            if data and self.filter_regular_expression.match(data).hasMatch():
-                return True  # Mostra a linha se houver correspondência em qualquer coluna
+            if data is not None:
+                data_str = str(data)
+                if self.filter_regular_expression.match(data_str).hasMatch():
+                    return True  # Mostra a linha se houver correspondência em qualquer coluna
         return False  # Oculta a linha se não houver correspondência em nenhuma coluna
+
 
 
 def on_search_text_changed(text, proxy_model):

@@ -58,9 +58,6 @@ class InicioWidget(QWidget):
         # Adiciona o layout horizontal de módulos e imagem ao layout principal vertical
         self.layout.addLayout(modules_and_image_layout)
 
-        # Adiciona um espaço flexível para empurrar o contato para o final
-        self.layout.addStretch()
-
         # Contato
         self.contact_label = QLabel(
             'Para mais informações, entre em contato pelo e-mail: <a href="mailto:siqueira.campos@marinha.mil.br">siqueira.campos@marinha.mil.br</a>'
@@ -72,6 +69,29 @@ class InicioWidget(QWidget):
         # Adiciona o contato ao final
         self.layout.addWidget(self.contact_label)
 
+        # Adiciona um espaço flexível para empurrar o contato para o final
+        self.layout.addStretch()
+
+        # Sinopse do projeto
+        self.in_memoriam_label = QLabel(
+            "“Não se pode fazer uma ideia de quanto é capaz um ser humano, quando quer com persistência e firmeza vivenciar uma causa "
+            "consagrando-lhe duas ou três horas do dia, sem interrupção.”"
+        )
+        self.in_memoriam_label.setAlignment(Qt.AlignmentFlag.AlignJustify)
+        self.in_memoriam_label.setWordWrap(True)
+        self.in_memoriam_label.setStyleSheet("color: #8AB4F7; font-size: 16px; padding: 10px; font-style: italic;")
+        # Sinopse do projeto
+        self.citacao_label = QLabel(
+            "Em memória de Francisco Siqueira Campos."
+        )
+        self.citacao_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.citacao_label.setWordWrap(True)
+        self.citacao_label.setStyleSheet("color: #8AB4F7; font-size: 16px; padding: 10px;")
+
+        # Adiciona os widgets ao layout
+        self.layout.addWidget(self.in_memoriam_label)
+        self.layout.addWidget(self.citacao_label)
+        self.layout.addStretch()
     def add_module(self, title, description, icon_name):
         """Adiciona um módulo com ícone, título e descrição alinhados corretamente."""
         icon = self.icons.get(icon_name.split('.')[0], QIcon())

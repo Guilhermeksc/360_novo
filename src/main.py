@@ -224,12 +224,12 @@ class MainWindow(QMainWindow):
         
         # Instancia o modelo de Dispensa Eletrônica com o caminho do banco de dados
         self.licitacao_model = LicitacaoModel(DATA_LICITACAO_PATH)
-        
+        self.licitacao_model.setup_model("controle_licitacao")
         # Configura o modelo SQL
-        sql_model = self.licitacao_model.setup_model("controle_licitacao", editable=True)
+        # sql_model = self.licitacao_model.setup_model("controle_licitacao", editable=True)
         
         # Cria o widget de Dispensa Eletrônica e passa o modelo SQL e o caminho do banco de dados
-        self.licitacao_widget = LicitacaoWidget(self.icons, sql_model, self.licitacao_model.database_licitacao_manager.db_path)
+        self.licitacao_widget = LicitacaoWidget(self.icons, self.licitacao_model, self.licitacao_model.database_licitacao_manager.db_path)
 
         # Cria o controlador e passa o widget e o modelo
         self.licitacao_controller = LicitacaoController(self.icons, self.licitacao_widget, self.licitacao_model)
