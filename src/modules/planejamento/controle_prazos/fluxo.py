@@ -9,10 +9,11 @@ import re
 from src.config.paths import CONTROLE_PRAZOS
 from datetime import datetime
 class ControlePrazosDialog(QDialog):
-    def __init__(self, model, icons, parent=None):
+    def __init__(self, model, icons, select_year, parent=None):
         super().__init__(parent)
         self.model = model
         self.icons = icons
+        self.select_year = select_year
         self.last_selected_item = None
         self.last_selected_list_widget = None
         self.setWindowTitle("Controle do Planejamento de Licitações")
@@ -56,12 +57,6 @@ class ControlePrazosDialog(QDialog):
                 }
             ]
 
-        # Identificar id_processo a serem removidos do JSON
-        ids_to_remove = id_processo_in_json - id_processo_in_model
-        for id_processo in ids_to_remove:
-            print(f"Removendo id_processo '{id_processo}' do arquivo JSON porque não está no modelo")
-            del data[id_processo]
-
         # Salva os dados atualizados de volta no arquivo JSON
         with open(CONTROLE_PRAZOS, "w", encoding="utf-8") as file:
             json.dump(data, file, indent=4, ensure_ascii=False)
@@ -91,12 +86,16 @@ class ControlePrazosDialog(QDialog):
         else:
             print(f"Arquivo JSON já existe em {CONTROLE_PRAZOS}")  # Depuração
 
-    def populate_widgets_from_json(self):
-        """Popula os widgets com os dados do JSON."""
-        print("Populando widgets...")
+    def populate_widgets_from_json(self, selected_year):
+        """
+        Popula os widgets com os dados do JSON filtrados pelo ano selecionado.
+        """
+        print(f"Populando widgets para o ano {selected_year}...")
+
         with open(CONTROLE_PRAZOS, "r", encoding="utf-8") as file:
             data = json.load(file)
 
+        # Limpa os widgets antes de preencher novamente
         for etapa, list_widget in self.etapas.items():
             list_widget.clear()
 
@@ -104,14 +103,27 @@ class ControlePrazosDialog(QDialog):
             if contadores:  # Verifica se há etapas registradas
                 ultima_etapa = contadores[-1]
                 situacao = ultima_etapa["situacao"]
-                objeto = self._get_objeto_by_id_processo(id_processo)
 
-                # Adiciona o item apenas no widget correspondente à última etapa
-                if situacao in self.etapas:
-                    print(f"Adicionando '{id_processo}' na etapa '{situacao}'")
-                    self.etapas[situacao].addFormattedTextItem(id_processo, objeto)
-                else:
-                    print(f"Erro: Etapa '{situacao}' não encontrada para '{id_processo}'")
+                # Obtém o objeto e verifica se pertence ao ano selecionado
+                objeto = self._get_objeto_by_id_processo(id_processo)
+                ano = self._get_ano_by_id_processo(id_processo)
+
+                if ano == selected_year:  # Filtra pelo ano selecionado
+                    # Adiciona o item apenas no widget correspondente à última etapa
+                    if situacao in self.etapas:
+                        print(f"Adicionando '{id_processo}' na etapa '{situacao}'")
+                        self.etapas[situacao].addFormattedTextItem(id_processo, objeto)
+                    else:
+                        print(f"Erro: Etapa '{situacao}' não encontrada para '{id_processo}'")
+
+    def _get_ano_by_id_processo(self, id_processo):
+        """
+        Obtém o valor do ano no modelo baseado no id_processo.
+        """
+        for row in range(self.model.rowCount()):
+            if self.model.index(row, 1).data() == id_processo:  # Considera que a coluna 1 é 'id_processo'
+                return self.model.index(row, self.model.fieldIndex("ano")).data()
+        return None
 
     def _get_objeto_by_id_processo(self, id_processo):
         """Busca o valor de `objeto` no modelo baseado no `id_processo`."""
@@ -121,16 +133,23 @@ class ControlePrazosDialog(QDialog):
         return "Objeto não encontrado"
 
     def _add_process_stages_to_layout(self, layout):
-        """Adiciona os widgets de etapas ao layout."""
-        grid_layout = QGridLayout()
-        etapas_keys = list(CustomListWidget.etapas.keys())
+        row_layout = QHBoxLayout()  # Cria um layout horizontal para cada linha
+        count = 0  # Contador para rastrear o número de widgets adicionados na linha atual
 
-        for index, etapa in enumerate(etapas_keys):
+        for etapa in self.etapas.keys():
             group_box = self._create_group_box(etapa)
-            row, col = divmod(index, 5)
-            grid_layout.addWidget(group_box, row, col)
+            row_layout.addWidget(group_box)
+            count += 1
 
-        layout.addLayout(grid_layout)
+            # Quando atingir 6 widgets na linha, adiciona o layout atual ao layout principal e cria uma nova linha
+            if count == 6:
+                layout.addLayout(row_layout)
+                row_layout = QHBoxLayout()
+                count = 0
+
+        # Adiciona a última linha se houver widgets restantes
+        if count > 0:
+            layout.addLayout(row_layout)
 
     def setup_ui(self):
         """Configura a interface do diálogo."""
@@ -145,7 +164,7 @@ class ControlePrazosDialog(QDialog):
             self.etapas[etapa] = CustomListWidget(self)
 
         self._add_process_stages_to_layout(layout)
-        self.populate_widgets_from_json()
+        self.populate_widgets_from_json(self.select_year)
 
     def update_selected_item(self, current_list_widget, current_item):
         # Remove o efeito do último item selecionado, se existir
@@ -192,16 +211,18 @@ class ControlePrazosDialog(QDialog):
 
         # Mapeia a etapa ao ícone correspondente
         icon_key = {
-            'Planejamento': 'business',
+            'Planejamento': 'priority',
             'Consolidação de Demanda': 'jigsaw',
             'Montagem do Processo': 'montagem',
             'Nota Técnica': 'deal',
+            'Atendimento da NT': 'alert',
             'AGU': 'agu',
             'Assinatura Contrato': 'sign',
             'Recomendações AGU': 'report',
             'Pré-Publicação': 'loading_table',
             'Sessão Pública': 'session',
             'Concluído': 'aproved',
+            'Arquivado': 'archive',
         }.get(etapa)
 
         # Adiciona o ícone ao layout se existir
@@ -223,8 +244,6 @@ class ControlePrazosDialog(QDialog):
 
         self.etapas[etapa] = list_widget
         return group_box
-
-
     
 class CustomListWidget(QListWidget):
     updateRequired = pyqtSignal()
@@ -233,12 +252,14 @@ class CustomListWidget(QListWidget):
         'Consolidação de Demanda': None,
         'Montagem do Processo': None,
         'Nota Técnica': None,
+        'Atendimento da NT': None,
         'AGU': None,
         'Recomendações AGU': None,
         'Pré-Publicação': None,
         'Sessão Pública': None,
         'Assinatura Contrato': None,
-        'Concluído': None
+        'Concluído': None,
+        'Arquivado': None
     }
 
     def __init__(self, parent=None):
@@ -247,7 +268,7 @@ class CustomListWidget(QListWidget):
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
-        self.setMinimumSize(QSize(190, 250))
+        self.setMinimumSize(QSize(170, 250))
         self.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
         self.effect_timer = QTimer(self)
         self.effect_timer.setInterval(10)  # 1 milisegundo
@@ -385,8 +406,6 @@ class CustomListWidget(QListWidget):
         else:
             print("Drop ignorado - nenhum texto no evento.")
             event.ignore()
-
-
 
 
 

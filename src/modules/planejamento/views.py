@@ -4,6 +4,7 @@ from PyQt6.QtCore import *
 from src.modules.utils.search_bar import setup_search_bar, MultiColumnFilterProxyModel
 from src.modules.utils.add_button import add_button, add_button_func
 import pandas as pd
+from datetime import datetime
 
 class LicitacaoWidget(QMainWindow):
     # Sinais para comunicação com o controlador
@@ -40,9 +41,35 @@ class LicitacaoWidget(QMainWindow):
         self.main_widget = QWidget(self)
         self.setCentralWidget(self.main_widget)
         self.main_layout = QVBoxLayout(self.main_widget)
-        label_dispensa = QLabel("Planejamento de Licitações (EM ATUALIZAÇÃO)", self)
-        label_dispensa.setStyleSheet("font-size: 20px; font-weight: bold; color: #4E648B")
-        self.main_layout.addWidget(label_dispensa)        
+        titulo_layout = QHBoxLayout()
+        title_label = QLabel("Controle do Planejamento de Licitações", self)
+        title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #4E648B")
+        titulo_layout.addWidget(title_label)
+
+        titulo_layout.addStretch()
+
+        # Seção de seleção de licitação
+        licitacao_label = QLabel("Selecione o Ano:", self)
+        licitacao_label.setStyleSheet("font-size: 18px; font-weight: bold;")
+        titulo_layout.addWidget(licitacao_label)
+
+        self.ano_combobox = QComboBox(self)
+        self.ano_combobox.setStyleSheet("""
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFFFFF;
+            background-color: #232536;
+            border: 1px solid #444; 
+            border-radius: 4px;
+            padding: 2px 5px;
+        """)
+        self._populate_combobox_with_years()
+        self.ano_combobox.currentIndexChanged.connect(self.filter_table_by_year)  # Conecte o sinal
+        titulo_layout.addWidget(self.ano_combobox)
+        self.ano_combobox.setMinimumWidth(100)
+        
+        self.main_layout.addLayout(titulo_layout)
+
         # Layout para a barra de ferramentas
         top_layout = QHBoxLayout()
         self.search_bar = setup_search_bar(self.icons, top_layout, self.proxy_model)
@@ -53,10 +80,85 @@ class LicitacaoWidget(QMainWindow):
         self.configure_table_model()
         self.adjust_columns()
 
-    # def connect_editar_dados_window(self, editar_dados_window):
-    #     # Conecta o sinal do EditarDadosWindow ao próprio widget
-    #     editar_dados_window.request_consulta_api.connect(self.request_consulta_api.emit)
-        
+    def _populate_combobox_with_years(self):
+        # Obtém o ano corrente
+        current_year = str(datetime.now().year)
+
+        # Verifica se o modelo está definido
+        if not self.licitacao_model or not self.licitacao_model.model:
+            return
+
+        # Obtém o índice da coluna 'ano'
+        column_index = self.model.fieldIndex("ano")
+        if column_index == -1:
+            return
+
+        # Obtém todos os valores únicos da coluna 'ano'
+        unique_years = set()
+        for row in range(self.model.rowCount()):
+            year = self.model.index(row, column_index).data()
+            if year is not None:
+                unique_years.add(year)
+
+        # Adiciona o ano corrente ao conjunto, garantindo que ele esteja presente
+        unique_years.add(current_year)
+
+        # Ordena os anos
+        sorted_years = sorted(unique_years, key=lambda x: str(x))
+
+        # Popula o combobox com todos os anos
+        self.ano_combobox.clear()
+        self.ano_combobox.addItems(sorted_years)
+
+        # Seleciona o ano corrente como valor inicial
+        current_index = self.ano_combobox.findText(current_year)
+        if current_index != -1:
+            self.ano_combobox.setCurrentIndex(current_index)
+
+        # Aplica o filtro inicial para o ano corrente
+        self.filter_table_by_year()
+
+    def reset_table_filter(self):
+        """Remove o filtro aplicado no modelo e reinicia a exibição da tabela."""
+        self.model.setFilter("")  # Limpa qualquer filtro existente no modelo
+        self.model.select()  # Recarrega todos os dados na tabela
+
+    def filter_table_by_year(self):
+        selected_year = self.ano_combobox.currentText()  # Obtém o ano selecionado
+        if not selected_year or not self.licitacao_model or not self.model:
+            return
+
+        # Define o filtro no modelo SQL para o ano selecionado
+        self.model.setFilter(f"ano = '{selected_year}'")
+        self.model.select()  # Atualiza os dados na visualização
+
+    def reset_combobox_with_all_years(self):
+        """Reinicia o combobox com todos os anos disponíveis no modelo."""
+        # Verifica se o modelo está configurado
+        if not self.licitacao_model or not self.licitacao_model.model:
+            return
+
+        # Obtém o índice da coluna 'ano'
+        column_index = self.model.fieldIndex("ano")
+        if column_index == -1:
+            return
+
+        # Obtém todos os valores únicos da coluna 'ano'
+        unique_years = set()
+        for row in range(self.model.rowCount()):
+            year = self.model.index(row, column_index).data()
+            if year is not None:
+                unique_years.add(year)
+
+        # Ordena os anos
+        sorted_years = sorted(unique_years, key=lambda x: str(x))
+
+        # Atualiza o combobox com os anos únicos
+        self.ano_combobox.blockSignals(True)  # Evita disparar sinais durante a atualização
+        self.ano_combobox.clear()
+        self.ano_combobox.addItems(sorted_years)
+        self.ano_combobox.blockSignals(False)  # Reativa os sinais
+
     def on_table_double_click(self, index):
         row = self.proxy_model.mapToSource(index).row()
         id_processo = self.model.index(row, self.model.fieldIndex("id_processo")).data()
@@ -183,7 +285,7 @@ class CustomItemDelegate(QStyledItemDelegate):
             situacao = index.data(Qt.ItemDataRole.DisplayRole)
             # Define o mapeamento de ícones
             icon_key = {
-                'Planejamento': 'business',
+                'Planejamento': 'priority',
                 'Consolidação de Demanda': 'jigsaw',
                 'Montagem do Processo': 'montagem',
                 'Nota Técnica': 'deal',
@@ -193,7 +295,7 @@ class CustomItemDelegate(QStyledItemDelegate):
                 'Recomendações AGU': 'report',
                 'Pré-Publicação': 'loading_table',
                 'Sessão Pública': 'session',
-                'Empenhado': 'emenda_parlamentar',
+                'Atendimento da NT': 'alert',
                 'Concluído': 'aproved',
                 'Arquivado': 'archive'
             }.get(situacao)

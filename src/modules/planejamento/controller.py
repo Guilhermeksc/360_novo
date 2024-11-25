@@ -14,6 +14,7 @@ from src.config.paths import CONTROLE_DADOS, CONTROLE_PRAZOS
 import sqlite3
 import os
 from src.modules.dispensa_eletronica.dados_api.api_consulta import ConsultaAPIDialog
+from datetime import datetime
 class LicitacaoController(QObject): 
     def __init__(self, icons, view, model):
         super().__init__()
@@ -32,13 +33,18 @@ class LicitacaoController(QObject):
         self.view.dataManager.connect(self.handle_data_manager)
         self.view.controlePrazo.connect(self.handle_controle_prazos)
         self.view.rowDoubleClicked.connect(self.handle_edit_item)
+        self.view.ano_combobox.currentIndexChanged.connect(self.filter_table_by_year)
 
     def handle_controle_prazos(self):
-          # Cria e exibe o diálogo de controle de prazos
-        dialog = ControlePrazosDialog(self.model, self.icons, self.view)
+        selected_year = self.view.ano_combobox.currentText()
+
+        if not selected_year:
+            QMessageBox.warning(self.view, "Aviso", "Nenhum ano selecionado.")
+            return
+
+        dialog = ControlePrazosDialog(self.model, self.icons, selected_year, self.view)
         dialog.exec()
         self.atualizar_situacao_com_json()
-        # Atualiza a view após o fechamento do diálogo
         self.view.refresh_model()
 
     def atualizar_situacao_com_json(self):
@@ -92,10 +98,11 @@ class LicitacaoController(QObject):
         dialog = AddItemDialog(self.icons, self.model.database_licitacao_manager.db_path, self.controle_om, self.view)  # Passa o caminho do banco de dados
         if dialog.exec():
             item_data = dialog.get_data()
-            # Adiciona a situação padrão 'Planejamento' antes de salvar
-            item_data['situacao'] = 'Planejamento'
             self.licitacao_model.insert_or_update_data(item_data)  # Salva no banco de dados
             self.view.refresh_model()   # Salva no banco de dados
+
+            # Reinicia o combobox e remove o filtro
+            self.view.reset_combobox_with_all_years()
 
     def handle_delete_item(self):
         """Trata a ação de exclusão de um item selecionado."""
@@ -205,13 +212,27 @@ class LicitacaoController(QObject):
             print(f"Erro ao consultar a tabela no banco de dados: {e}")
             total_homologado, count_anulado_fracassado, count_informado = None, None, None
 
-        # Passa os valores para a instância de EditarDadosWindow
+        # Passa os valores para a instância de handle_edit_item
         self.edit_data_dialog = EditarDadosWindow(
             data, self.icons, self.view
         )
+        # Conecta o sinal para salvar os dados
         self.edit_data_dialog.save_data_signal.connect(self.handle_save_data)
-        # self.view.connect_editar_dados_window(self.edit_data_dialog)  # Conecta sinais
+
+        # Conecta o sinal de fechamento para atualizar o modelo
+        self.edit_data_dialog.window_closed.connect(self._atualizar_modelo_apos_edicao)
+
+        # Exibe a janela de edição
         self.edit_data_dialog.show()
+
+    def _atualizar_modelo_apos_edicao(self):
+        """
+        Atualiza o modelo após o fechamento do diálogo de edição.
+        """
+        print("Atualizando o modelo após edição...")
+        self.model.select()  # Recarrega os dados no modelo
+        self.view.refresh_model()  # Atualiza a exibição na interface
+        print("Modelo atualizado com sucesso.")
 
     def handle_save_data(self, data):
         try:
@@ -317,7 +338,75 @@ class LicitacaoController(QObject):
         dialog.exec()
         # self.model.select()
 
-        
+    def reset_combobox_with_all_years(self):
+        """Reinicia o combobox com todos os anos disponíveis no modelo."""
+        # Verifica se o modelo está configurado
+        if not self.licitacao_model or not self.licitacao_model.model:
+            return
+
+        # Obtém o índice da coluna 'ano'
+        column_index = self.model.fieldIndex("ano")
+        if column_index == -1:
+            return
+
+        # Obtém todos os valores únicos da coluna 'ano'
+        unique_years = set()
+        for row in range(self.model.rowCount()):
+            year = self.model.index(row, column_index).data()
+            if year is not None:
+                unique_years.add(year)
+
+        # Ordena os anos
+        sorted_years = sorted(unique_years, key=lambda x: str(x))
+
+        # Atualiza o combobox através da view
+        self.view.ano_combobox.blockSignals(True)  # Evita disparar sinais durante a atualização
+        self.view.ano_combobox.clear()
+        self.view.ano_combobox.addItems(sorted_years)
+        self.view.ano_combobox.blockSignals(False)
+
+    # Função para filtrar a tabela com base no ano selecionado
+    def filter_table_by_year(self):
+        """Aplica o filtro no modelo com base no ano selecionado no combobox."""
+        selected_year = self.view.ano_combobox.currentText()  # Obtém o ano selecionado
+        if not selected_year or not self.licitacao_model or not self.model:
+            return
+
+        # Define o filtro no modelo SQL para o ano selecionado
+        self.model.setFilter(f"ano = '{selected_year}'")
+        self.model.select()  # Atualiza os dados na visualização
+
+    # Função para popular o combobox no início
+    def populate_combobox_with_years(self):
+        """Popula o combobox com todos os anos disponíveis no modelo."""
+        # Obtém o índice da coluna 'ano'
+        column_index = self.model.fieldIndex("ano")
+        if column_index == -1:
+            return
+
+        # Obtém todos os valores únicos da coluna 'ano'
+        unique_years = set()
+        for row in range(self.model.rowCount()):
+            year = self.model.index(row, column_index).data()
+            if year is not None:
+                unique_years.add(year)
+
+        # Adiciona o ano corrente ao conjunto
+        current_year = str(datetime.now().year)
+        unique_years.add(current_year)
+
+        # Ordena os anos
+        sorted_years = sorted(unique_years, key=lambda x: str(x))
+
+        # Atualiza o combobox através da view
+        self.view.ano_combobox.clear()
+        self.view.ano_combobox.addItems(sorted_years)
+
+        # Define o ano corrente como valor inicial
+        current_index = self.view.ano_combobox.findText(current_year)
+        if current_index != -1:
+            self.view.ano_combobox.setCurrentIndex(current_index)
+
 def show_warning_if_view_exists(view, title, message):
     if view is not None:
         QMessageBox.warning(view, title, message)

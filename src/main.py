@@ -67,23 +67,23 @@ class MainWindow(QMainWindow):
 
         # Definindo os botões do menu e seus contextos
         self.menu_buttons = [
-            ("init", "init_hover", "Início", self.show_inicio),
+            ("dash", "dash_hover", "Dashboard", self.show_dashboard),
             ("dispensa", "dispensa_hover", "Dispensa Eletrônica", self.show_dispensa),
             ("ata", "ata_hover", "Atas", self.show_atas),
             ("contract", "contract_hover", "Contratos", self.show_contratos),
             ("plan", "plan_hover", "Planejamento", self.show_planejamento),
-            ("dash", "dash_hover", "Dashboard", self.show_dashboard),
             ("config", "config_hover", "Configurações", self.show_config),
+            ("init", "init_hover", "Sobre o Projeto", self.show_inicio),
         ]
 
         # Criando os botões e adicionando-os ao layout do menu
         for icon_key, hover_icon_key, tooltip_text, callback in self.menu_buttons:
-            button = self.create_icon_button(icon_key, hover_icon_key)
+            button = self.create_icon_button(icon_key, hover_icon_key, icon_key)
             button.clicked.connect(callback)
             button.installEventFilter(self)  # Instala um filtro de evento para gerenciar o tooltip
             button.setProperty("tooltipText", tooltip_text)  # Define o texto do tooltip como propriedade
             self.menu_layout.addWidget(button)
-            self.buttons[icon_key] = button  # Armazena o botão para referência futura
+            self.buttons[icon_key] = button 
     
         # Cria um widget para o menu e adiciona o layout
         self.menu_widget = QWidget()
@@ -104,40 +104,68 @@ class MainWindow(QMainWindow):
     def hide_tooltip(self):
         self.tooltip_label.setVisible(False)
         self.tooltip_arrow.setVisible(False)
-        
+            
     def eventFilter(self, obj, event):
-        """Filtra eventos para exibir tooltips personalizados alinhados à direita dos botões do menu."""
-        if event.type() == QEvent.Type.Enter and obj in self.buttons.values():
-            tooltip_text = obj.property("tooltipText")
-            if tooltip_text:
-                self.tooltip_label.setText(tooltip_text)
-                self.tooltip_label.adjustSize()
+        """Filtra eventos para exibir tooltips personalizados alinhados à direita dos botões do menu e gerenciar ícones."""
+        if isinstance(obj, QPushButton):
+            # Evento de entrada do mouse no botão
+            if event.type() == QEvent.Type.Enter and obj in self.buttons.values():
+                tooltip_text = obj.property("tooltipText")
+                if tooltip_text:
+                    self.tooltip_label.setText(tooltip_text)
+                    self.tooltip_label.adjustSize()
 
-                # Posição do tooltip alinhada à direita do botão, considerando a posição global da janela
-                button_pos = obj.mapToGlobal(QPoint(obj.width(), 0))
-                window_pos = self.mapFromGlobal(button_pos)  # Converte para coordenadas relativas à janela principal
-                tooltip_x = window_pos.x() + 5  # Ajuste para a direita do botão
-                tooltip_y = window_pos.y() + (obj.height() - self.tooltip_label.height()) // 2  # Centraliza verticalmente
-                self.tooltip_label.move(tooltip_x, tooltip_y)
-                self.tooltip_label.setVisible(True)
-        elif event.type() == QEvent.Type.Leave and obj in self.buttons.values():
-            self.tooltip_label.setVisible(False)
+                    # Posição do tooltip alinhada à direita do botão
+                    button_pos = obj.mapToGlobal(QPoint(obj.width(), 0))  # Posição global do botão
+                    tooltip_x = button_pos.x() + 5  # Ajuste para a direita do botão
+                    tooltip_y = button_pos.y() + (obj.height() - self.tooltip_label.height()) // 2  # Centraliza verticalmente
+                    self.tooltip_label.move(self.mapFromGlobal(QPoint(tooltip_x, tooltip_y)))  # Converte para coordenadas da janela
+                    self.tooltip_label.setVisible(True)
+
+                # Altera o ícone do botão para o estado de hover, se não estiver selecionado
+                if not obj.property("isSelected"):
+                    obj.setIcon(obj.hover_icon)
+
+            # Evento de saída do mouse do botão
+            elif event.type() == QEvent.Type.Leave and obj in self.buttons.values():
+                self.tooltip_label.setVisible(False)
+
+                # Retorna o ícone ao estado padrão, se não estiver selecionado
+                if not obj.property("isSelected"):
+                    obj.setIcon(obj.default_icon)
+
+            # Evento de clique no botão
+            elif event.type() == QEvent.Type.MouseButtonPress and obj in self.buttons.values():
+                # Desmarca todos os botões e reseta os ícones
+                for btn in self.buttons.values():
+                    btn.setProperty("isSelected", False)
+                    btn.setIcon(btn.default_icon)
+
+                # Marca o botão clicado como selecionado e altera o ícone
+                obj.setProperty("isSelected", True)
+                obj.setIcon(obj.selected_icon)
 
         return super().eventFilter(obj, event)
-    def create_icon_button(self, icon_key, hover_icon_key):
+
+
+    def create_icon_button(self, icon_key, hover_icon_key, selected_icon_key):
         button = QPushButton()
         button.setIcon(self.icons[icon_key])  # Ícone padrão
-        button.setIconSize(QSize(40, 40))
+        button.setIconSize(QSize(30, 30))
         button.setStyleSheet(get_menu_button_style())
         button.setCursor(Qt.CursorShape.PointingHandCursor)
         button.setFixedSize(50, 50)
 
-        # Armazena o ícone padrão e o ícone de hover
+        # Armazena os ícones padrão, de hover e de seleção
         button.default_icon = self.icons[icon_key]
         button.hover_icon = self.icons[hover_icon_key]
+        button.selected_icon = self.icons[selected_icon_key]
         button.icon_key = icon_key  # Armazena a chave do ícone
 
-        # Instala o event filter para capturar eventos de hover
+        # Propriedade para gerenciar o estado selecionado
+        button.setProperty("isSelected", False)
+
+        # Instala o event filter para capturar eventos de hover e selected
         button.installEventFilter(self)
 
         return button
@@ -157,7 +185,10 @@ class MainWindow(QMainWindow):
     # ====== EVENTOS DE MENU ======
 
     def show_inicio(self):
-        self.clear_content_area(keep_image_label=True)
+        self.clear_content_area()
+
+        self.inicio_widget = InicioWidget(self.icons)
+
         self.content_layout.addWidget(self.inicio_widget)
         # Define o botão "init" como o ativo (correspondente ao botão inicial)
         self.set_active_button(self.buttons["init"])
@@ -243,8 +274,8 @@ class MainWindow(QMainWindow):
         self.clear_content_area()
 
         # Instancia o widget de dashboard e adiciona à área de conteúdo
-        dashboard_widget = DashboardWidget(self.icons)
-        self.content_layout.addWidget(dashboard_widget)
+        self.dashboard_widget = DashboardWidget(self.icons)
+        self.content_layout.addWidget(self.dashboard_widget)
 
         # Define o botão do dashboard como ativo
         self.set_active_button(self.buttons["dash"])
@@ -255,7 +286,6 @@ class MainWindow(QMainWindow):
         self.config_widget = ConfigManager(self.icons, self)
         self.content_layout.addWidget(self.config_widget)
         self.set_active_button(self.buttons["config"])
-
 
     def set_selected_button(self, selected_button):
         """Define o botão selecionado no menu lateral."""
@@ -269,9 +299,9 @@ class MainWindow(QMainWindow):
     def open_initial_page(self):
         """Abre a página inicial da aplicação."""
         self.clear_content_area(keep_image_label=True)
-        self.content_layout.addWidget(self.inicio_widget)
+        self.content_layout.addWidget(self.dashboard_widget)
         # Define o botão "init" como o ativo (correspondente ao botão inicial)
-        self.set_active_button(self.buttons["init"])
+        self.set_active_button(self.buttons["dash"])
 
         
     # ====== CONFIGURAÇÕES ======
@@ -334,7 +364,7 @@ class MainWindow(QMainWindow):
         self.content_widget.setMinimumSize(1050, 700)
         self.central_layout.addWidget(self.content_widget)
         
-        self.inicio_widget = InicioWidget(self.icons, self)
+        self.dashboard_widget = DashboardWidget(self.icons)
 
     def clear_content_area(self, keep_image_label=False):
         """Remove todos os widgets da área de conteúdo, exceto a imagem opcional."""

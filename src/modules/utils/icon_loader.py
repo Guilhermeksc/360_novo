@@ -25,7 +25,13 @@ def load_icon(icon_name):
 # Funções específicas para carregar ícones usados frequentemente
 def load_icons():
     return {
+        "priority": load_icon("priority.png"),
+        "rotate": load_icon("rotate.png"),
         "synchronize": load_icon("synchronize.png"),
+        "synchronize": load_icon("synchronize.png"),
+        "comments": load_icon("comments.png"),
+        "delete_comment": load_icon("delete_comment.png"),
+        "add_comment": load_icon("add_comment.png"),
         "brasil": load_icon("brasil.png"),
         "arquivo": load_icon("arquivo.png"),
         "api": load_icon("api.png"),
@@ -66,7 +72,6 @@ def load_icons():
         "calendar": load_icon("calendar.png"),
         "report": load_icon("report.png"),
         "signature": load_icon("signature.png"),
-        "planning": load_icon("planning.png"),
         "website_menu": load_icon("website_menu.png"),
         "automation": load_icon("automation.png"),
         "pdf": load_icon("pdf.png"),

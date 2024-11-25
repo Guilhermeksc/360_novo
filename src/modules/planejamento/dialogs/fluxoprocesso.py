@@ -81,17 +81,23 @@ class ControlePrazosDialog(QDialog):
         super().closeEvent(event)
 
     def _add_process_stages_to_layout(self, layout):
-        top_layout = QHBoxLayout()
-        bottom_layout = QHBoxLayout()
-        metade_etapas = len(self.etapas) // 2
-        for index, etapa in enumerate(self.etapas.keys()):
+        row_layout = QHBoxLayout()  # Cria um layout horizontal para cada linha
+        count = 0  # Contador para rastrear o número de widgets adicionados na linha atual
+
+        for etapa in self.etapas.keys():
             group_box = self._create_group_box(etapa)
-            if index < metade_etapas:
-                top_layout.addWidget(group_box)
-            else:
-                bottom_layout.addWidget(group_box)
-        layout.addLayout(top_layout)
-        layout.addLayout(bottom_layout)
+            row_layout.addWidget(group_box)
+            count += 1
+
+            # Quando atingir 6 widgets na linha, adiciona o layout atual ao layout principal e cria uma nova linha
+            if count == 6:
+                layout.addLayout(row_layout)
+                row_layout = QHBoxLayout()
+                count = 0
+
+        # Adiciona a última linha se houver widgets restantes
+        if count > 0:
+            layout.addLayout(row_layout)
 
     def _create_group_box(self, etapa):
         group_box = QGroupBox(etapa)
@@ -113,12 +119,14 @@ class CustomListWidget(QListWidget):
         'Consolidação de Demanda': None,
         'Montagem do Processo': None,
         'Nota Técnica': None,
+        'Atendimento da NT': None,
         'AGU': None,
         'Recomendações AGU': None,
         'Pré-Publicação': None,
         'Sessão Pública': None,
         'Assinatura Contrato': None,
-        'Concluído': None
+        'Concluído': None,
+        'Arquivado': None,
     }
 
     def __init__(self, parent=None, database_path=None):

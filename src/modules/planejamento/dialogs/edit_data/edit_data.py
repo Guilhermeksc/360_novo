@@ -1,22 +1,25 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
+from src.modules.utils.brl import formatar_para_brl, CustomQLineEdit
 from src.modules.utils.add_button import add_button, add_button_func, create_button
 from src.modules.dispensa_eletronica.dados_api.api_consulta import ConsultaAPIDialog
 from src.modules.dispensa_eletronica.dialogs.edit_data.apoio_data import COLUNAS_LEGIVEIS, COLUNAS_LEGIVEIS_INVERSO, CORRECAO_VALORES, STYLE_GROUP_BOX
-from src.modules.dispensa_eletronica.dialogs.edit_data.widgets.sigdem_layout import create_GrupoSIGDEM, create_utilidades_group
-from src.modules.dispensa_eletronica.dialogs.edit_data.widgets.setor_responsavel import create_dados_responsavel_contratacao_group
 from src.modules.dispensa_eletronica.dialogs.edit_data.widgets.formulario import TableCreationWorker
+from src.modules.planejamento.dialogs.checklist import ChecklistWidget
 from src.modules.utils.linha_layout import linha_divisoria_layout, linha_divisoria_sem_spacer_layout
-from src.modules.utils.select_om import create_selecao_om_layout, load_sigla_om, on_om_changed
-from src.modules.utils.agentes_responsaveis_layout import create_combo_box, carregar_agentes_responsaveis
 from pathlib import Path
-from src.config.paths import CONTROLE_DADOS, CONTROLE_PRAZOS
+from src.config.paths import CONTROLE_DADOS, CONTROLE_PRAZOS, LICITACAO_CONTROLE_JSON
 import json
 import pandas as pd
 import os
 import subprocess
-from src.modules.utils.add_button import add_button, add_button_func
+from datetime import datetime
+
+def verificar_criar_json(arquivo_json):
+    if not arquivo_json.exists():
+        with open(arquivo_json, 'w', encoding='utf-8') as f:
+            json.dump({}, f, ensure_ascii=False, indent=4)
 
 def create_icon_checkbox(label_text, icon_unchecked, icon_checked, is_checked=False):
     """Cria um layout horizontal contendo um QCheckBox com QIcon para estados personalizado."""
@@ -49,22 +52,31 @@ def create_icon_checkbox(label_text, icon_unchecked, icon_checked, is_checked=Fa
 
     return layout, checkbox
 class EditarDadosWindow(QMainWindow):
-    save_data_signal = pyqtSignal(dict)
+    save_data_signal = pyqtSignal(dict)  # Sinal para salvar dados
+    window_closed = pyqtSignal()  # Sinal para notificar fechamento
 
     def __init__(self, dados, icons, parent=None):
-    # def __init__(self, dados, icons, parent=None):
         super().__init__(parent)
         self.dados = dados
         self.icons = icons
 
         # Configurações gerais da janela
-        self.setWindowTitle("Editar Dados")
+        self.setWindowTitle("Edição de Dados")
         self.setWindowIcon(self.icons.get("edit", None))
         self.setFixedSize(1150, 780)
         self.move(0, 0)  # Posicionar no canto superior esquerdo da tela
-        self.carregar_referencias()
 
+        # Configuração adicional
+        self.carregar_referencias()
+        verificar_criar_json(LICITACAO_CONTROLE_JSON)
         self.setup_ui()
+
+    def closeEvent(self, event):
+        """
+        Sobrescreve o evento de fechamento para emitir o sinal customizado.
+        """
+        super().closeEvent(event)
+        self.window_closed.emit()
 
     def atualizar_om_label(self, uasg, orgao_responsavel):
         """Atualiza o texto do om_label com os valores atualizados de OM."""
@@ -115,39 +127,6 @@ class EditarDadosWindow(QMainWindow):
     def setup_layout_titulo(self):
         """Configura o layout do título com o ID do processo e a seção de consulta API."""
         layout_titulo = QHBoxLayout()
-
-        # Configuração do layout de prioridade
-        prioridade_layout = QVBoxLayout()
-
-        # Adiciona o checkbox para "Prioritário"
-        check_prioridade_layout, self.prioridade_check = create_icon_checkbox(
-            "Prioritário",
-            icon_unchecked=self.icons.get("unmark", QIcon()),
-            icon_checked=self.icons.get("checkmark", QIcon()),
-            is_checked=False
-        )
-        prioridade_layout.addLayout(check_prioridade_layout)
-
-        # Adiciona o checkbox para "Emenda Parlamentar"
-        check_emenda_layout, self.emenda_check = create_icon_checkbox(
-            "Emenda Parlamentar",
-            icon_unchecked=self.icons.get("unmark", QIcon()),
-            icon_checked=self.icons.get("checkmark", QIcon()),
-            is_checked=False
-        )
-        prioridade_layout.addLayout(check_emenda_layout)
-
-        # Adiciona o checkbox para "Registro de Preços"
-        check_srp_layout, self.srp_check = create_icon_checkbox(
-            "Registro de Preços",
-            icon_unchecked=self.icons.get("unmark", QIcon()),
-            icon_checked=self.icons.get("checkmark", QIcon()),
-            is_checked=False
-        )
-        prioridade_layout.addLayout(check_srp_layout)
-
-        # Adicionando o layout de prioridade ao layout principal
-        layout_titulo.addLayout(prioridade_layout)
 
         spacer_left = QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout_titulo.addSpacerItem(spacer_left)
@@ -230,17 +209,6 @@ class EditarDadosWindow(QMainWindow):
         spacer_situacao = QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         situacao_om_setor_layout.addSpacerItem(spacer_situacao)
 
-        situacao_label = QLabel("Situação: ")
-        situacao_label.setStyleSheet("font-size: 16px; font-weight: bold")
-        situacao_om_setor_layout.addWidget(situacao_label)
-
-        # Cria um combobox para a situação
-        self.situacao_combo = QComboBox()
-        self.situacao_combo.setStyleSheet("font-size: 14px")
-        self.situacao_combo.addItems(["Planejamento", "Aprovado", "Sessão Pública", "Homologado", "Empenhado", "Concluído", "Arquivado"])
-        self.situacao_combo.setCurrentText(self.dados.get('situacao', 'Planejamento'))
-        situacao_om_setor_layout.addWidget(self.situacao_combo)
-
         divisao_layout = QHBoxLayout()
         divisao_label = QLabel("  Divisão: ")
         divisao_label.setStyleSheet("font-size: 16px; font-weight: bold")
@@ -281,7 +249,6 @@ class EditarDadosWindow(QMainWindow):
 
         return layout_titulo
 
-
     def create_navigation_layout(self):
         # Criação do frame que conterá o nav_layout e aplicará a borda inferior
         nav_frame = QFrame()
@@ -294,7 +261,8 @@ class EditarDadosWindow(QMainWindow):
 
         buttons = [
             ("Informações", "Informações"),
-            ("Etapa", "Etapa"),
+            ("Documentos", "Documentos"),
+            ("Controle de Etapas", "Controle de Etapas"),
             ("Mensagens", "Mensagens"),
             ("Envio AGU", "Envio AGU"),
             ("Resultados", "Resultados"),
@@ -319,24 +287,6 @@ class EditarDadosWindow(QMainWindow):
                 self.selected_button = button  # Mantém o botão "Informações" como o selecionado inicial
 
         nav_layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
-
-        # # Verifica se as pastas existem e define o ícone e status
-        # pastas_existentes = self.verificar_pastas(self.pasta_base)
-        # status_text = "Pastas encontradas" if pastas_existentes else "Pastas não encontradas"
-        # icon_key = "folder_v" if pastas_existentes else "folder_x"
-        # icon = self.icons.get(icon_key)
-        # self.status_label = QLabel(status_text)
-        # self.icon_label = QLabel()
-        # if icon and isinstance(icon, QIcon):
-        #     icon_pixmap = icon.pixmap(30, 30)
-        #     self.icon_label.setPixmap(icon_pixmap)
-
-        # # Layout de status com ícone e texto
-        # status_layout = QHBoxLayout()
-        # status_layout.addWidget(self.icon_label)
-        # status_layout.addWidget(self.status_label)
-        # status_layout.addStretch()
-        # nav_layout.addLayout(status_layout)
 
         # Define o estilo para os botões dentro do nav_layout
         self.setStyleSheet("""
@@ -392,11 +342,32 @@ class EditarDadosWindow(QMainWindow):
         if widget:
             self.stacked_widget.setCurrentWidget(widget)
 
+    def stacked_widget_envio_agu(self, data):
+        frame = QFrame()
+        layout = QVBoxLayout()
+        label = QLabel("AGU")        
+        checklist_widget = ChecklistWidget(parent=self, icons_path=self.icons, df_registro_selecionado=self.dados)
+        layout.addWidget(label)
+        layout.addWidget(checklist_widget)
+        frame.setLayout(layout)
+        return frame
+    
+    def stacked_widget_documentos(self, data):
+        frame = QFrame()
+        layout = QVBoxLayout()
+        label = QLabel("Documentos")
+        layout.addWidget(label)
+        frame.setLayout(layout)
+        return frame
+    
     def setup_stacked_widgets(self):       
         # Cria widgets para cada seção
         self.widgets_map = {
             "Informações": self.stacked_widget_info(self.dados),
-            "Etapa": self.stacked_widget_etapas(self.dados),
+            "Controle de Etapas": self.stacked_widget_etapas(self.dados),
+            "Documentos": self.stacked_widget_documentos(self.dados),
+            "Mensagens": self.stacked_widget_mensagens(self.dados),
+            "Envio AGU": self.stacked_widget_envio_agu(self.dados),
             "Resultados": self.stacked_widget_pncp(self.dados),
         }
 
@@ -413,21 +384,222 @@ class EditarDadosWindow(QMainWindow):
         self.contratacao_layout = self.create_contratacao_group()
         info_contratacao_layout.addWidget(self.contratacao_layout)
 
-        # classificacao_orcamentaria_formulario_layout = QVBoxLayout()
-        # self.classificacao_orcamentaria_group_box = self.create_classificacao_orcamentaria_group()
-        
-        # self.group_box_formulario = self.setup_formularios()
-
-        # classificacao_orcamentaria_formulario_layout.addWidget(self.classificacao_orcamentaria_group_box)
-        # classificacao_orcamentaria_formulario_layout.addWidget(self.group_box_formulario)
-
         hbox_top_layout.addLayout(info_contratacao_layout)
-        # hbox_top_layout.addLayout(classificacao_orcamentaria_formulario_layout)
 
         layout.addLayout(hbox_top_layout)
         frame.setLayout(layout)
 
         return frame
+
+    def create_comentarios_layout(self):
+        comentarios_layout = QHBoxLayout()
+
+        # Layout para adicionar novos comentários
+        comentario_novo = QVBoxLayout()
+
+        comentario_label_layout = QHBoxLayout()
+        brasil_icon = QIcon(self.icons.get("comments", None))
+        image_label_esquerda = QLabel()
+        image_label_esquerda.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        image_label_esquerda.setPixmap(brasil_icon.pixmap(40, 40))
+        comentario_label_layout.addWidget(image_label_esquerda)
+
+        comentario_label = QLabel("Novo Comentário:")
+        comentario_label_layout.addWidget(comentario_label)
+
+        # Adiciona o combobox
+        self.comentarios_padronizados_combo = QComboBox()
+        self.comentarios_padronizados_combo.addItems([
+            "Selecione um comentário padronizado",
+            "Devolvido para correções",
+            "Divulgação de IRP",
+            "Atendimento de Nota Técnica",
+            "Envio para CJACM",
+            "Atendimento das Recomendações",
+            "Data da Sessão Pública"
+        ])
+        # Ajusta o tamanho da fonte do combobox
+        self.comentarios_padronizados_combo.setStyleSheet("""
+            QComboBox {
+                font-size: 14px;
+                color: #FFFFFF;
+                background-color: #2C2F3F;
+                border: 1px solid #434364;
+                border-radius: 5px;
+                padding: 5px;
+            }
+        """)
+        self.comentarios_padronizados_combo.currentIndexChanged.connect(self.atualizar_comentario_padronizado)
+        comentario_label_layout.addWidget(self.comentarios_padronizados_combo)
+
+        comentario_label_layout.addStretch()
+        comentario_novo.addLayout(comentario_label_layout)
+
+        self.comentario_edit = QTextEdit()
+        comentario_novo.addWidget(self.comentario_edit)
+
+        button_layout = QHBoxLayout()
+        # Botão para adicionar comentário
+        add_button_func(
+            "Adicionar Comentário",
+            "add_comment",
+            self.adicionar_comentario,
+            button_layout,
+            self.icons,
+            "Clique para adicionar um novo comentário."
+        )
+
+        # Botão para excluir comentário
+        add_button_func(
+            "Excluir Comentário",
+            "delete_comment",
+            self.excluir_comentario,
+            button_layout,
+            self.icons,
+            "Clique para excluir o comentário selecionado."
+        )
+        comentario_novo.addLayout(button_layout)
+
+        # Layout para listar comentários existentes
+        comentarios_registrados = QVBoxLayout()
+        self.lista_comentarios = QListWidget()
+        self.lista_comentarios.setFixedWidth(630)
+        self.lista_comentarios.setStyleSheet("""
+            QListWidget {
+                color: #FFFFFF;
+                font-size: 14px;
+                background-color: #2C2F3F;
+                border: 1px solid #434364; /* Borda branca */
+                border-radius: 10px; /* Bordas arredondadas */
+                padding: 5px;
+            }
+        """)
+        self.lista_comentarios.itemDoubleClicked.connect(self.editar_comentario)  # Conecta o duplo clique ao método
+        self.carregar_comentarios()
+
+        comentarios_registrados.addWidget(QLabel("Comentários Registrados:"))
+        comentarios_registrados.addWidget(self.lista_comentarios)
+
+        comentarios_layout.addLayout(comentario_novo)
+        comentarios_layout.addLayout(comentarios_registrados)
+
+        return comentarios_layout
+
+    def atualizar_comentario_padronizado(self):
+        """Atualiza o QTextEdit com o comentário padronizado selecionado."""
+        # Obtém a data e hora atual
+        data_atual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+        comentarios_texto = {
+            "Devolvido para correções": f"O processo foi devolvido em {data_atual} para correções necessárias no documento.",
+            "Divulgação de IRP": f"A IRP foi divulgada em {data_atual}.",
+            "Atendimento de Nota Técnica": f"Nota Técnica atendida em {data_atual} conforme as recomendações solicitadas.",
+            "Envio para CJACM": f"O processo foi enviado em {data_atual} para análise do CJACM.",
+            "Atendimento das Recomendações": f"As recomendações foram atendidas em {data_atual}.",
+            "Data da Sessão Pública": f"A sessão pública foi agendada para o dia {data_atual}."
+        }
+
+        texto = comentarios_texto.get(self.comentarios_padronizados_combo.currentText(), "")
+        self.comentario_edit.setText(texto)
+
+    def editar_comentario(self, item):
+        """Permite editar o comentário selecionado e salva no JSON."""
+        id_processo = self.dados.get("id_processo", "Desconhecido")
+        if not id_processo:
+            QMessageBox.warning(self, "Erro", "ID do processo não encontrado.")
+            return
+
+        # Armazena o texto original antes de editar
+        texto_anterior = item.text()
+
+        # Abre um diálogo para o usuário editar o texto
+        novo_texto, ok = QInputDialog.getText(
+            self, 
+            "Editar Comentário", 
+            "Altere o comentário:", 
+            QLineEdit.EchoMode.Normal, 
+            texto_anterior
+        )
+        if ok and novo_texto.strip():
+            item.setText(novo_texto.strip())  # Atualiza o texto no QListWidget
+
+            # Atualiza o JSON com o novo texto
+            with open(LICITACAO_CONTROLE_JSON, 'r+', encoding='utf-8') as f:
+                comentarios_data = json.load(f)
+
+                if id_processo in comentarios_data:
+                    for comentario in comentarios_data[id_processo]:
+                        if comentario["comentario"] == texto_anterior:
+                            comentario["comentario"] = novo_texto.strip()
+                            break
+
+                    # Salva as alterações no JSON
+                    f.seek(0)
+                    json.dump(comentarios_data, f, ensure_ascii=False, indent=4)
+                    f.truncate()
+
+            QMessageBox.information(self, "Sucesso", "Comentário atualizado com sucesso.")
+        else:
+            QMessageBox.information(self, "Cancelado", "A edição foi cancelada.")
+
+                    
+    def carregar_comentarios(self):
+        """Carrega os comentários do arquivo JSON."""
+        with open(LICITACAO_CONTROLE_JSON, 'r', encoding='utf-8') as f:
+            comentarios_data = json.load(f)
+        
+        id_processo = self.dados.get("id_processo", "Desconhecido")
+        if id_processo in comentarios_data:
+            self.lista_comentarios.clear()
+            for comentario in comentarios_data[id_processo]:
+                self.lista_comentarios.addItem(comentario["comentario"])
+
+    def adicionar_comentario(self):
+        """Adiciona um novo comentário ao JSON."""
+        novo_comentario = self.comentario_edit.toPlainText().strip()
+        if not novo_comentario:
+            QMessageBox.warning(self, "Aviso", "O comentário não pode estar vazio.")
+            return
+
+        id_processo = self.dados.get("id_processo", "Desconhecido")
+        with open(LICITACAO_CONTROLE_JSON, 'r+', encoding='utf-8') as f:
+            comentarios_data = json.load(f)
+
+            if id_processo not in comentarios_data:
+                comentarios_data[id_processo] = []
+
+            comentarios_data[id_processo].append({"comentario": novo_comentario})
+
+            # Salva no JSON
+            f.seek(0)
+            json.dump(comentarios_data, f, ensure_ascii=False, indent=4)
+            f.truncate()
+
+        self.comentario_edit.clear()
+        self.carregar_comentarios()
+
+    def excluir_comentario(self):
+        """Exclui apenas o comentário selecionado."""
+        selected_row = self.lista_comentarios.currentRow()
+        if selected_row == -1:
+            QMessageBox.warning(self, "Aviso", "Nenhum comentário selecionado para exclusão.")
+            return
+
+        id_processo = self.dados.get("id_processo", "Desconhecido")
+
+        with open(LICITACAO_CONTROLE_JSON, 'r+', encoding='utf-8') as f:
+            comentarios_data = json.load(f)
+
+            if id_processo in comentarios_data:
+                # Remove o comentário pela posição
+                comentarios_data[id_processo].pop(selected_row)
+
+                # Salva no JSON
+                f.seek(0)
+                json.dump(comentarios_data, f, ensure_ascii=False, indent=4)
+                f.truncate()
+
+        self.carregar_comentarios()
 
     def create_contratacao_group(self):
         contratacao_group_box = QGroupBox("Informações da Contratação")
@@ -435,36 +607,31 @@ class EditarDadosWindow(QMainWindow):
 
         contratacao_layout = QVBoxLayout()
 
+        spacer_item = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        contratacao_layout.addItem(spacer_item)
+
         # Campo de Objeto
         objeto_layout = QHBoxLayout()
         objeto_label = QLabel("Objeto:")
         self.objeto_edit = QLineEdit(self.dados.get('objeto', ''))
         objeto_layout.addWidget(objeto_label)
         objeto_layout.addWidget(self.objeto_edit)
-        contratacao_layout.addLayout(objeto_layout)
-
-        # Conecta o sinal editingFinished para atualizar o objeto_label automaticamente
-        self.objeto_edit.editingFinished.connect(self.atualizar_objeto_label)
-
-        # Campo de Objeto
-        objeto_completo_layout = QVBoxLayout()
-        objeto_completo_label = QLabel("Objeto Completo:")
-        self.objeto_completo_edit = QTextEdit(self.dados.get('objeto_completo', ''))
-        objeto_completo_layout.addWidget(objeto_completo_label)
-        objeto_completo_layout.addWidget(self.objeto_completo_edit)
-        contratacao_layout.addLayout(objeto_completo_layout)
 
         # NUP, Material e Serviço com seleção exclusiva
-        nup_layout = QHBoxLayout()
         nup_label = QLabel("NUP:")
         self.nup_edit = QLineEdit(self.dados.get('nup', ''))
-        nup_layout.addWidget(nup_label)
-        nup_layout.addWidget(self.nup_edit)
+        self.nup_edit.setFixedWidth(170)  # Define largura fixa
+        objeto_layout.addWidget(nup_label)
+        objeto_layout.addWidget(self.nup_edit)
 
-        contratacao_layout.addLayout(nup_layout)
-        
+        valor_total_label = QLabel("Valor Estimado:")
+        valor_inicial = self.dados.get('valor_total', 0.0)  # Obtém o valor inicial
+        self.valor_total_edit = CustomQLineEdit(valor_inicial)
+        self.valor_total_edit.setFixedWidth(130)  # Define largura fixa
+        objeto_layout.addWidget(valor_total_label)
+        objeto_layout.addWidget(self.valor_total_edit)
+
         # Material e Serviço com seleção exclusiva usando RadioButtons
-        material_servico_layout = QHBoxLayout()
         material_servico_label = QLabel("Material/Serviço:")
         self.radio_material = QRadioButton("Material")
         self.radio_servico = QRadioButton("Serviço")
@@ -479,30 +646,36 @@ class EditarDadosWindow(QMainWindow):
         self.radio_servico.setChecked(material_servico == "Serviço")
         self.radio_material.setChecked(material_servico == "Material")
 
-        material_servico_layout.addWidget(material_servico_label)
-        material_servico_layout.addWidget(self.radio_material)
-        material_servico_layout.addWidget(self.radio_servico)
-        contratacao_layout.addLayout(material_servico_layout)
+        objeto_layout.addWidget(material_servico_label)
+        objeto_layout.addWidget(self.radio_material)
+        objeto_layout.addWidget(self.radio_servico)
+        contratacao_layout.addLayout(objeto_layout)
 
         # Conecta o sinal para atualizar o objeto_label quando "Material" ou "Serviço" é selecionado
-        self.material_servico_group.buttonClicked.connect(self.atualizar_objeto_label)
+        self.material_servico_group.buttonClicked.connect(self.atualizar_objeto_label)        
+    
+        # Conecta o sinal editingFinished para atualizar o objeto_label automaticamente
+        self.objeto_edit.editingFinished.connect(self.atualizar_objeto_label)
 
+        # Campo de Objeto
+        objeto_completo_layout = QVBoxLayout()
+        objeto_completo_label = QLabel("Objeto Completo:")
+        self.objeto_completo_edit = QTextEdit(self.dados.get('objeto_completo', ''))
+        self.objeto_completo_edit.setFixedHeight(100)  # Define altura fixa
+        objeto_completo_layout.addWidget(objeto_completo_label)
+        objeto_completo_layout.addWidget(self.objeto_completo_edit)
+        contratacao_layout.addLayout(objeto_completo_layout)
+        
         spacer_item = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         contratacao_layout.addItem(spacer_item)
-        consulta_api = QHBoxLayout()
-        api_icon = QLabel()
-        api_icon.setPixmap(self.icons["api"].pixmap(30, 30))  # Ícone de tamanho 20x20
-        consulta_api.addWidget(api_icon)
 
-        ultima_atualizacao = self.dados.get("ultima_atualizacao", "N/A")
-        ultima_consulta = QLabel(f"Última consulta: {ultima_atualizacao}")
-        ultima_consulta.setStyleSheet("color: #8AB4F7; font-size: 16px")
-        consulta_api.addWidget(ultima_consulta)
+        linha_divisoria, spacer_baixo_linha = linha_divisoria_layout()
+        contratacao_layout.addWidget(linha_divisoria)
+        contratacao_layout.addSpacerItem(spacer_baixo_linha)
 
-        spacer_left = QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        consulta_api.addSpacerItem(spacer_left)
+        comentarios_layout = self.create_comentarios_layout()
+        contratacao_layout.addLayout(comentarios_layout)
 
-        contratacao_layout.addLayout(consulta_api)
         # Configura layout do GroupBox
         contratacao_group_box.setLayout(contratacao_layout)
 
@@ -761,8 +934,106 @@ class EditarDadosWindow(QMainWindow):
         frame.setLayout(layout)
         return frame
 
+    def stacked_widget_mensagens(self, data):
+        frame = QFrame()
+        main_layout = QHBoxLayout()  # Layout principal
+
+        # Layout para botões à esquerda
+        msg_button_layout = QVBoxLayout()
+        # Exemplo de botões adicionados ao layout de botões
+        btn_enviar = QPushButton("Enviar")
+        btn_recebidas = QPushButton("Recebidas")
+        btn_arquivar = QPushButton("Arquivar")
+        msg_button_layout.addWidget(btn_enviar)
+        msg_button_layout.addWidget(btn_recebidas)
+        msg_button_layout.addWidget(btn_arquivar)
+        msg_button_layout.addStretch()  # Adiciona um espaço flexível
+
+        # Layout para o conteúdo à direita
+        msg_content_layout = QVBoxLayout()
+        msg_label = QLabel("Conteúdo da Mensagem")
+        msg_content_layout.addWidget(msg_label)
+
+        # Sub-layout para os dois campos de texto
+        text_fields_layout = QHBoxLayout()
+
+        # Campo para edição do texto
+        self.edit_text_field = QTextEdit()
+        self.edit_text_field.setPlaceholderText("Edite o texto da mensagem aqui...")
+        self.edit_text_field.textChanged.connect(self.atualizar_texto_padronizado)
+        text_fields_layout.addWidget(self.edit_text_field)
+
+        # Campo para texto padronizado
+        self.standard_text_field = QTextEdit()
+        self.standard_text_field.setReadOnly(True)
+        self.standard_text_field.setPlaceholderText("Texto padronizado da mensagem...")
+        text_fields_layout.addWidget(self.standard_text_field)
+
+        # Adiciona o sub-layout de campos ao layout de conteúdo
+        msg_content_layout.addLayout(text_fields_layout)
+
+        # Adiciona os layouts ao layout principal
+        main_layout.addLayout(msg_button_layout)
+        main_layout.addLayout(msg_content_layout)
+
+        # Configura o frame com o layout principal
+        frame.setLayout(main_layout)
+        return frame
+
+    def atualizar_texto_padronizado(self):
+        """Atualiza o campo de texto padronizado sempre que o texto editável for alterado."""
+        texto_editado = self.edit_text_field.toPlainText()
+        self.standard_text_field.setText(texto_editado)
+
     def save_data(self):
-        pass
+        # Coleta os dados dos widgets de contratação
+        data_to_save = {
+            'id_processo': self.dados.get('id_processo'),
+            'tipo': self.dados.get('tipo'),
+            'numero': self.dados.get('numero'),
+            'ano': self.dados.get('ano'),
+            'situacao': self.dados.get('situacao'),
+            'sigla_om': self.dados.get('sigla_om'),
+            'uasg': self.dados.get('uasg'),
+            'orgao_responsavel': self.dados.get('orgao_responsavel'),
+            'setor_responsavel': self.dados.get('setor_responsavel'),
+            'objeto': self.objeto_edit.text(),
+            'nup': self.nup_edit.text(),
+            'material_servico': "Serviço" if self.radio_servico.isChecked() else "Material",
+        }
+        
+        # Coleta os dados dos widgets de classificação orçamentária
+        data_to_save.update({
+            'valor_total': self.valor_total_edit.text(),
+        })
+
+        # Emissão do sinal para salvar os dados
+        self.save_data_signal.emit(data_to_save)
+
+        self.show_confirmation_message()
+
+    def show_confirmation_message(self, message="Dados salvos com sucesso!"):
+        """Exibe uma mensagem de confirmação temporária."""
+        confirmation_label = QLabel(message, self)
+        confirmation_label.setStyleSheet("""
+            QLabel {
+                background-color: #009B3A;
+                color: white;
+                font-size: 16px;
+                border-radius: 5px;
+                padding: 10px;
+            }
+        """)
+        confirmation_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        confirmation_label.setFixedSize(300, 50)
+        confirmation_label.move(
+            self.width() // 2 - confirmation_label.width() // 2,
+            self.height() // 2 - confirmation_label.height() // 2
+        )
+        confirmation_label.show()
+
+        # Fecha a mensagem automaticamente após 1 segundo
+        QTimer.singleShot(700, confirmation_label.close)
 
     def create_sessao_publica_group(self):
         # Criação do QGroupBox para a seção Sessão Pública

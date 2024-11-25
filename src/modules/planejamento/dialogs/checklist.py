@@ -1,11 +1,10 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
-from diretorios import *
 from pathlib import Path
 import os
 import pandas as pd
-from database.utils.treeview_utils import open_folder, load_images, create_button
+from src.modules.utils.treeview_utils import open_folder, create_button
 import PyPDF2
 from PyPDF2 import PdfWriter, PdfReader
 from reportlab.pdfgen import canvas
@@ -18,10 +17,34 @@ import string
 from datetime import datetime
 from num2words import num2words
 import webbrowser
-from modules.planejamento.utilidades_planejamento import remover_caracteres_especiais
 from functools import partial
 import subprocess
 import sys
+from src.config.paths import *
+
+def remover_caracteres_especiais(texto):
+    mapa_acentos = {
+        'á': 'a', 'à': 'a', 'ã': 'a', 'â': 'a', 'ä': 'a',
+        'Á': 'A', 'À': 'A', 'Ã': 'A', 'Â': 'A', 'Ä': 'A',
+        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+        'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+        'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+        'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
+        'ó': 'o', 'ò': 'o', 'õ': 'o', 'ô': 'o', 'ö': 'o',
+        'Ó': 'O', 'Ò': 'O', 'Õ': 'O', 'Ô': 'O', 'Ö': 'O',
+        'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+        'Ú': 'U', 'Ù': 'U', 'Û': 'U', 'Ü': 'U',
+        'ç': 'c', 'Ç': 'C', 'ñ': 'n', 'Ñ': 'N'
+    }
+    for caractere_original, caractere_novo in mapa_acentos.items():
+        texto = texto.replace(caractere_original, caractere_novo)
+
+    # Adicionando substituição para caracteres impeditivos em nomes de arquivos e pastas
+    caracteres_impeditivos = r'\\/:*?"<>|'
+    for caractere in caracteres_impeditivos:
+        texto = texto.replace(caractere, '-')
+
+    return texto
 
 class DraggableTreeWidget(QTreeWidget):
     def __init__(self, parent=None):
@@ -132,7 +155,6 @@ class DraggableTreeWidget(QTreeWidget):
         # Aqui você deve definir o TREEVIEW_DATA_PATH se ainda não foi definido
         df.to_csv(TREEVIEW_DATA_PATH, index=False)
         return df
-
 
     def onItemChanged(self, item, column):
         # Verificar se a coluna editada é a coluna "Fim"
@@ -255,14 +277,11 @@ class DraggableTreeWidget(QTreeWidget):
         df.to_csv(TREEVIEW_DATA_PATH, index=False)
 
 class ChecklistWidget(QWidget):
-    def __init__(self, parent, config_manager, icons_path, df_registro_selecionado):
+    def __init__(self, parent, icons_path, df_registro_selecionado):
         super().__init__(parent)
-        self.icons_dir = icons_path
-        self.config_manager = config_manager 
+        self.icons = icons_path
+        self.config_manager = ConfigManager(BASE_DIR / "config.json")
         self.df_registro = df_registro_selecionado
-        self.image_cache = load_images(self.icons_dir, [
-            "sapiens.png", "processing.png", "word.png", "rotate.png", "save.png", "page.png", "import.png",
-        ])
         self.layout = QVBoxLayout(self)
 
         self.tree = DraggableTreeWidget(self)
@@ -343,7 +362,7 @@ class ChecklistWidget(QWidget):
         id_processo_original = self.df_registro['id_processo'].iloc[0]
         id_processo_novo = id_processo_original.replace('/', '-')
 
-        template_path = TEMPLATE_PLANEJAMENTO_DIR / "template_nota_tecnica.docx"
+        template_path = TEMPLATE_DIR / "template_nota_tecnica.docx"
         doc = DocxTemplate(template_path)
         
         context = {
@@ -391,7 +410,7 @@ class ChecklistWidget(QWidget):
         subpasta_final.mkdir(parents=True, exist_ok=True)
 
         # Caminho para o template e inicialização do DocxTemplate
-        template_path = TEMPLATE_PLANEJAMENTO_DIR / "template_checklist.docx"
+        template_path = TEMPLATE_DIR / "template_checklist.docx"
         doc = DocxTemplate(template_path)
 
         context = {row['Marcador']: f"Fls. {row['Início']} a {row['Fim']}" for index, row in df_treeview.iterrows()}
@@ -426,13 +445,20 @@ class ChecklistWidget(QWidget):
     def create_buttons(self):
         icon_size = QSize(40, 40)  # Tamanho do ícone para todos os botões
         self.button_specs = [
-            ("Sapiens", self.image_cache['sapiens'], self.abrir_link_sapiens, "Carregar o link do Sapiens", icon_size),
-            ("Resetar Padrão", self.image_cache['rotate'], self.resetar_treeview, "Atualizar a visualização", icon_size),
-            ("Editar Modelo", self.image_cache['word'], self.editarTemplate, "Editar o Checklist da AGU", icon_size),
-            ("Numerar", self.image_cache['page'], numerar_pdf_gui, "Numerar o PDF", icon_size),
-            ("Processar", self.image_cache['processing'], lambda: self.processar_pdf_na_integra_e_gerar_documentos(), "Processar o PDF", icon_size),            ("Importar", self.image_cache['import'], self.onLoadItems, "Importar dados", icon_size),
-            ("Salvar", self.image_cache['save'], self.onSaveItems, "Salvar as alterações", icon_size),
+            ("Sapiens", self.icons['stats'], self.abrir_link_sapiens, "Carregar o link do Sapiens", icon_size),
+            ("Resetar Padrão", self.icons['stats'], self.resetar_treeview, "Atualizar a visualização", icon_size),
+            ("Editar Modelo", self.icons['stats'], self.editarTemplate, "Editar o Checklist da AGU", icon_size),
+            ("Numerar", self.icons['stats'], numerar_pdf_gui, "Numerar o PDF", icon_size),
+            ("Processar", self.icons['stats'], lambda: self.processar_pdf_na_integra_e_gerar_documentos(), "Processar o PDF", icon_size),            ("Importar", self.icons['stats'], self.onLoadItems, "Importar dados", icon_size),
+            ("Salvar", self.icons['stats'], self.onSaveItems, "Salvar as alterações", icon_size),
         ]
+        #     ("Sapiens", self.icons['sapiens'], self.abrir_link_sapiens, "Carregar o link do Sapiens", icon_size),
+        #     ("Resetar Padrão", self.icons['rotate'], self.resetar_treeview, "Atualizar a visualização", icon_size),
+        #     ("Editar Modelo", self.icons['word'], self.editarTemplate, "Editar o Checklist da AGU", icon_size),
+        #     ("Numerar", self.icons['page'], numerar_pdf_gui, "Numerar o PDF", icon_size),
+        #     ("Processar", self.icons['processing'], lambda: self.processar_pdf_na_integra_e_gerar_documentos(), "Processar o PDF", icon_size),            ("Importar", self.icons['import'], self.onLoadItems, "Importar dados", icon_size),
+        #     ("Salvar", self.icons['save'], self.onSaveItems, "Salvar as alterações", icon_size),
+        # ]
 
         for text, icon, callback, tooltip, icon_size in self.button_specs:
             btn = create_button(text=text, icon=icon, callback=callback, tooltip_text=tooltip, parent=self, icon_size=icon_size)
@@ -443,7 +469,7 @@ class ChecklistWidget(QWidget):
         webbrowser.open(url)
 
     def editarTemplate(self):
-        template_path = TEMPLATE_PLANEJAMENTO_DIR / "template_checklist.docx"
+        template_path = TEMPLATE_DIR / "template_checklist.docx"
         try:
             if sys.platform == "win32":
                 subprocess.run(["start", "winword", str(template_path)], check=True, shell=True)
@@ -804,7 +830,7 @@ def substituir_variaveis_nota_tecnica(df_registro_selecionado, df):
     id_processo_novo = id_processo_original.replace('/', '-')
 
     # Configuração do caminho do template e inicialização
-    template_path = TEMPLATE_PLANEJAMENTO_DIR / "template_nota_tecnica.docx"
+    template_path = TEMPLATE_DIR / "template_nota_tecnica.docx"
     doc = DocxTemplate(template_path)
     
     # Contexto inicial com as variáveis básicas
@@ -861,7 +887,7 @@ def substituir_variaveis_nota_tecnica(df_registro_selecionado, df):
     id_processo_original = df_registro_selecionado['id_processo'].iloc[0]
     id_processo_novo = id_processo_original.replace('/', '-')
 
-    template_path = TEMPLATE_PLANEJAMENTO_DIR / "template_nota_tecnica.docx"
+    template_path = TEMPLATE_DIR / "template_nota_tecnica.docx"
     doc = DocxTemplate(template_path)
     
     # Contexto inicial com as variáveis básicas

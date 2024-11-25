@@ -274,10 +274,12 @@ class LicitacaoModel(QObject):
             "Recomendações AGU": 4,
             "AGU": 5,
             "Nota Técnica": 6,
-            "Montagem do Processo": 7,
-            "Consolidação de Demanda": 8,
-            "Planejamento": 9,
-            "Concluído": 10
+            "Atendimento da NT": 7,
+            "Montagem do Processo": 8,
+            "Consolidação de Demanda": 9,
+            "Planejamento": 10,
+            "Concluído": 11,            
+            "Arquivado": 12,
         }
         with self.database_licitacao_manager as conn:
             cursor = conn.cursor()
@@ -319,9 +321,9 @@ class LicitacaoModel(QObject):
             srp=excluded.srp
         '''
 
-
+            
         # Verifica se 'situacao' está dentro dos valores válidos
-        valid_situations = ["Planejamento", "Aprovado", "Sessão Pública", "Homologado", "Empenhado", "Concluído", "Arquivado"]
+        valid_situations = ["Assinatura Contrato", "Sessão Pública", "Pré-Publicação", "Recomendações AGU", "AGU", "Nota Técnica", "Atendimento da NT", "Montagem do Processo", "Consolidação de Demanda", "Planejamento", "Concluído", "Arquivado"]
         data['situacao'] = data.get('situacao', 'Planejamento')
         if data['situacao'] not in valid_situations:
             data['situacao'] = 'Planejamento'
@@ -366,7 +368,7 @@ class CustomSqlTableModel(QSqlTableModel):
         self.column_names = [
             "situacao", "id_processo", "tipo", "numero", "ano", 
             "nup", "material_servico", "objeto", "objeto_completo", "uasg", 
-            "orgao_responsavel", "sigla_om", "setor_responsavel", "valor", "srp", "order"            
+            "orgao_responsavel", "sigla_om", "setor_responsavel", "valor_total", "srp", "order"            
         ]
 
     def flags(self, index):

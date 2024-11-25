@@ -1,3 +1,4 @@
+from PyQt6.QtCore import *
 import sys
 from pathlib import Path
 import json
@@ -9,6 +10,7 @@ else:  # Ambiente de desenvolvimento
 
 # Diretórios
 DATABASE_DIR = BASE_DIR / "database"
+TREEVIEW_DATA_PATH =  DATABASE_DIR / "treeview_data.csv"
 DATA_ATAS_PATH = DATABASE_DIR / "controle_atas.db"
 DATA_LICITACAO_PATH = DATABASE_DIR / "controle_licitacao.db"
 DATA_DISPENSA_ELETRONICA_PATH = DATABASE_DIR / "controle_contratacao_direta.db"
@@ -16,6 +18,7 @@ DATA_CONTRATOS_PATH = DATABASE_DIR / "controle_contrato.db"
 CONTROLE_ASS_CONTRATOS_DADOS = DATABASE_DIR / "controle_assinatura.db"
 CONTROLE_DADOS = DATABASE_DIR / "controle_dados.db"
 
+LICITACAO_CONTROLE_JSON = BASE_DIR / "licitacao.json"
 CONTROLE_PRAZOS = BASE_DIR / "controle_status.json"
 CONFIG_FILE = BASE_DIR / "config.json"
 PRE_DEFINICOES_JSON = BASE_DIR / "pre_definicioes.json"
@@ -31,6 +34,9 @@ ICONS_DIR = RESOURCES_DIR / "icons"
 IMAGES_DIR = RESOURCES_DIR / "images"
 TEMPLATE_DIR = RESOURCES_DIR / "template"
 TEMPLATE_PATH = TEMPLATE_DIR / 'template_ata.docx'
+
+TEMPLATE_AUTUACAO = TEMPLATE_DIR / "template_autuacao.docx"
+TEMPLATE_CHECKLIST = TEMPLATE_DIR / "checklist.docx"
 
 ACANTO = ICONS_DIR / "brasil.png"
 
@@ -64,3 +70,32 @@ def load_config_path_id():
 def save_config(config):
     with open(CONFIG_FILE, 'w') as file:
         json.dump(config, file)
+
+class ConfigManager(QObject):
+    config_updated = pyqtSignal(str, Path)  # sinal emitido quando uma configuração é atualizada
+
+    def __init__(self, config_file):
+        super().__init__()
+        self.config_file = config_file
+        self.config = self.load_config()
+
+    def load_config(self):
+        try:
+            with open(self.config_file, 'r') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+
+    def save_config(self, key, value):
+        self.config[key] = value
+        with open(self.config_file, 'w') as f:
+            json.dump(self.config, f)
+        self.config_updated.emit(key, Path(value))
+        
+    def update_config(self, key, value):
+        # Aqui garantimos que ambos os parâmetros sejam passados corretamente para save_config
+        self.save_config(key, value)
+        self.config_updated.emit(key, Path(value))
+
+    def get_config(self, key, default_value):
+        return self.config.get(key, default_value)

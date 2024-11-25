@@ -1,7 +1,18 @@
 # dashboard_widget.py
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox, QPushButton
-from PyQt6.QtGui import QFont, QPixmap, QIcon
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QScrollArea
+from PyQt6.QtGui import QFont, QPainter, QIcon, QBrush, QColor
+from PyQt6.QtCore import Qt, QSize, QRectF, QMargins
+import sqlite3
+from PyQt6.QtCharts import QChart, QChartView, QPieSeries, QPieSlice
+
+from src.config.paths import DATA_LICITACAO_PATH, DATA_DISPENSA_ELETRONICA_PATH
+from src.modules.utils.linha_layout import linha_divisoria_layout
+
+class DashboardWidget(QWidget):
+    def __init__(self, icons):
+        super().__init__()
+        self.icons = icons  # Recebe o dicionário de ícones
+        self.setup_ui()
 
 class DashboardWidget(QWidget):
     def __init__(self, icons):
@@ -10,8 +21,9 @@ class DashboardWidget(QWidget):
         self.setup_ui()
 
     def setup_ui(self):
-        # Layout principal vertical para o dashboard
-        main_layout = QVBoxLayout()
+        # Widget principal que conterá todo o layout
+        central_widget = QWidget()
+        main_layout = QVBoxLayout(central_widget)
         main_layout.setSpacing(10)
         main_layout.setContentsMargins(20, 20, 20, 20)
 
@@ -19,197 +31,219 @@ class DashboardWidget(QWidget):
         title_layout = QHBoxLayout()
         title_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        dash_icon_button = QPushButton()  # Cria um botão para exibir o ícone
-        dash_icon_button.setIcon(self.icons["dash_titulo"])  # Define o ícone
-        dash_icon_button.setIconSize(QSize(40, 40))  # Define o tamanho do ícone
-        dash_icon_button.setFlat(True)  # Remove a borda do botão para exibir só o ícone
+        dash_icon_button = QPushButton()
+        dash_icon_button.setIcon(self.icons["dash_titulo"])
+        dash_icon_button.setIconSize(QSize(40, 40))
+        dash_icon_button.setFlat(True)
         title_layout.addWidget(dash_icon_button)
 
-        # Título do dashboard
-        title_label = QLabel("Dashboard Licitação")
+        title_label = QLabel("Dashboard de Contratações")
         title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         title_layout.addWidget(title_label)
 
-        # Adiciona o layout de título e ícone ao layout principal
         main_layout.addLayout(title_layout)
 
-        # # Layout horizontal para as três seções principais
-        # horizontal_layout = QHBoxLayout()
-        # horizontal_layout.setSpacing(20)
+        # Cria o layout vertical para a seção de licitações
+        licitacao_layout = QVBoxLayout()
 
-        # # Configura o QGroupBox da seção "Efetivo" com subseções
-        # efetivo_groupbox = QGroupBox("Efetivo")
-        # efetivo_layout = QHBoxLayout(efetivo_groupbox)
-        # efetivo_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        # efetivo_groupbox.setStyleSheet("""
-        #     QGroupBox {
-        #         border: 1px solid #3C3C5A;
-        #         border-radius: 10px;
-        #         font-size: 20px;
-        #         font-weight: bold;
-        #         color: white;
-        #         margin-top: 13px;
-        #     }
-        #     QGroupBox:title {
-        #         subcontrol-origin: margin;
-        #         padding: 0 3px;
-        #     }
-        # """)
-        # efetivo_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        # efetivo_layout.addLayout(self.create_subsection_layout("Efetivo Atual", "efetivo", "10"))
-        # efetivo_layout.addLayout(self.create_subsection_layout("Oficiais", "grid", "2"))
-        # efetivo_layout.addLayout(self.create_subsection_layout("Licitação", "grid", "3"))
-        # efetivo_layout.addLayout(self.create_subsection_layout("Contratos", "grid", "3"))
-        # efetivo_layout.addLayout(self.create_subsection_layout("Contratação Direta", "grid", "2"))
+        licitacao_label = QLabel("Licitação")
+        licitacao_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        licitacao_layout.addWidget(licitacao_label)
 
+        # Cria o layout horizontal para os gráficos
+        charts_layout = QHBoxLayout()
+        charts_layout.setSpacing(10)
+        charts_layout.setContentsMargins(0, 0, 0, 0)
 
-        # # Configura o layout da seção "Distribuição por patente"
-        # patente_groupbox = QGroupBox("Posto/Graduação")
-        # patente_layout = QVBoxLayout(patente_groupbox)
-        # patente_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        # patente_groupbox.setStyleSheet("""
-        #     QGroupBox {
-        #         border: 1px solid #3C3C5A;
-        #         border-radius: 10px;
-        #         font-size: 20px;
-        #         font-weight: bold;
-        #         color: white;
-        #         margin-top: 13px;
-        #     }
-        #     QGroupBox:title {
-        #         subcontrol-origin: margin;
-        #         padding: 0 3px;
-        #     }
-        # """)
-        # patente_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        # patente_layout.addLayout(self.create_subsection_hlayout("Oficiais", "oficial", "2"))
-        # patente_layout.addLayout(self.create_subsection_hlayout("Suboficiais", "suboficial", "4"))
-        # patente_layout.addLayout(self.create_subsection_hlayout("1º Sargento", "sg1", "0"))
-        # patente_layout.addLayout(self.create_subsection_hlayout("2º Sargento", "sg2", "2"))
-        # patente_layout.addLayout(self.create_subsection_hlayout("3º Sargento", "sg3", "1"))
-        # patente_layout.addLayout(self.create_subsection_hlayout("Cabo", "cb", "0"))
-        # patente_layout.addLayout(self.create_subsection_hlayout("Marinheiro", "mn", "1"))
-        # # Adicione widgets específicos ao layout patente, se necessário
+        # Gráfico com o tamanho máximo padrão de 400x300
+        material_servico_widget = self.create_pie_chart(
+            DATA_LICITACAO_PATH,
+            'material_servico',
+            'controle_licitacao',
+            'Distribuição de Material/Serviço'
+        )
 
-        # # Configura o layout da seção "Controle"
-        # controle_groupbox = QGroupBox("Controle")
-        # controle_layout = QVBoxLayout(controle_groupbox)
-        # controle_groupbox.setStyleSheet("""
-        #     QGroupBox {
-        #         border: 1px solid #3C3C5A;
-        #         border-radius: 10px;
-        #         font-size: 20px;
-        #         font-weight: bold;
-        #         color: white;
-        #         margin-top: 13px;
-        #     }
-        #     QGroupBox:title {
-        #         subcontrol-origin: margin;
-        #         padding: 0 3px;
-        #     }
-        # """)
-        # controle_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        # controle_layout.addLayout(self.create_subsection_layout("Dispensa Eletrônica", "grid", "3"))
-        # # Adicione widgets específicos ao layout controle, se necessário
+        # Gráfico com tamanho máximo personalizado de 500x400
+        situacao_widget = self.create_pie_chart(
+            DATA_LICITACAO_PATH,
+            'situacao',
+            'controle_licitacao',
+            'Distribuição de Situação',
+            max_width=600,
+            max_height=300
+        )
+        # Adiciona os gráficos ao layout horizontal
+        charts_layout.addWidget(material_servico_widget)
+        charts_layout.addWidget(situacao_widget)
+        licitacao_layout.addLayout(charts_layout)
 
-        # # Adiciona os layouts verticais ao layout horizontal principal
-        # efetivo_groupbox.setLayout(efetivo_layout) 
-        # horizontal_layout.addWidget(efetivo_groupbox)
+        # Adiciona o layout de licitação ao layout principal
+        main_layout.addLayout(licitacao_layout)
 
-        # patente_groupbox.setLayout(patente_layout) 
-        # horizontal_layout.addWidget(patente_groupbox)
+        linha_divisoria, spacer_baixo_linha = linha_divisoria_layout()
+        main_layout.addWidget(linha_divisoria)
+        main_layout.addSpacerItem(spacer_baixo_linha)
 
-        # controle_groupbox.setLayout(controle_layout)
-        # horizontal_layout.addWidget(controle_groupbox)
+        dispensa_layout = QVBoxLayout()
+        dispensa_label = QLabel("Dispensa Eletrônica")
+        dispensa_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        dispensa_layout.addWidget(dispensa_label)
 
-        # Adiciona o layout horizontal ao layout principal do dashboard
-        # main_layout.addLayout(horizontal_layout)
+        # Cria o layout horizontal para os gráficos
+        charts_dispensa_layout = QHBoxLayout()
+        charts_dispensa_layout.setSpacing(10)
+        charts_dispensa_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Define o layout principal para o widget de dashboard
-        self.setLayout(main_layout)
+        # Gráfico com o tamanho máximo padrão de 400x300
+        material_servico_dispensa_widget = self.create_pie_chart(
+            DATA_DISPENSA_ELETRONICA_PATH,
+            'material_servico',
+            'controle_dispensas',
+            'Distribuição de Material/Serviço'
+        )
 
-    def create_subsection_layout(self, label_text, icon_key, value_text):
-        """
-        Cria um layout horizontal para uma subseção com um layout vertical para o ícone e 
-        outro layout vertical para o título e valor, para estilo de dashboard.
-        """
-        # Layout principal da subseção (horizontal)
-        subsection_layout = QHBoxLayout()
-        subsection_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        subsection_layout.setContentsMargins(10, 10, 10, 10)
-        subsection_layout.setSpacing(15)
+        # Gráfico com tamanho máximo personalizado de 600x300
+        situacao_dispensa_widget = self.create_pie_chart(
+            DATA_DISPENSA_ELETRONICA_PATH,
+            'situacao',
+            'controle_dispensas',
+            'Distribuição de Situação',
+            max_width=600,
+            max_height=300
+        )
+        # Adiciona os gráficos ao layout horizontal
+        charts_dispensa_layout.addWidget(material_servico_dispensa_widget)
+        charts_dispensa_layout.addWidget(situacao_dispensa_widget)
+        dispensa_layout.addLayout(charts_dispensa_layout)
 
-        # Layout vertical para o ícone
-        icon_layout = QVBoxLayout()
-        icon_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Adiciona o layout de dispensa ao layout principal
+        main_layout.addLayout(dispensa_layout)
 
-        icon_button = QPushButton()
-        icon_button.setIcon(self.icons[icon_key])
-        icon_button.setIconSize(QSize(40, 40))
-        icon_button.setFlat(True)  # Remove a borda do botão
-        icon_layout.addWidget(icon_button)
+        linha_divisoria, spacer_baixo_linha = linha_divisoria_layout()
+        main_layout.addWidget(linha_divisoria)
+        main_layout.addSpacerItem(spacer_baixo_linha)
 
-        # Layout vertical para o título e o valor
-        text_layout = QVBoxLayout()
-        text_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        
-        # Título
-        title_label = QLabel(label_text)
-        title_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        text_layout.addWidget(title_label)
+        contratos_layout = QVBoxLayout()
+        contratos_label = QLabel("Contratos")
+        contratos_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        contratos_layout.addWidget(contratos_label)
 
-        # Valor
-        value_label = QLabel(value_text)
-        value_label.setFont(QFont("Arial", 22, QFont.Weight.Bold))
-        value_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        text_layout.addWidget(value_label)
+        # Cria o layout horizontal para os gráficos
+        charts_contratos_layout = QHBoxLayout()
+        charts_contratos_layout.setSpacing(10)
+        charts_contratos_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Adiciona o layout do ícone e o layout de texto ao layout principal
-        subsection_layout.addLayout(icon_layout)
-        subsection_layout.addLayout(text_layout)
+        # Gráfico com o tamanho máximo padrão de 400x300
+        material_servico_contratos_widget = self.create_pie_chart(
+            DATA_DISPENSA_ELETRONICA_PATH,
+            'material_servico',
+            'controle_dispensas',
+            'Distribuição de Material/Serviço'
+        )
 
-        return subsection_layout
+        # Gráfico com tamanho máximo personalizado de 600x300
+        situacao_contratos_widget = self.create_pie_chart(
+            DATA_DISPENSA_ELETRONICA_PATH,
+            'situacao',
+            'controle_dispensas',
+            'Distribuição de Situação',
+            max_width=600,
+            max_height=300
+        )
+        # Adiciona os gráficos ao layout horizontal
+        charts_contratos_layout.addWidget(material_servico_contratos_widget)
+        charts_contratos_layout.addWidget(situacao_contratos_widget)
+        contratos_layout.addLayout(charts_contratos_layout)
 
-    def create_subsection_hlayout(self, label_text, icon_key, value_text):
-        """
-        Cria um layout horizontal para uma subseção com um layout vertical para o ícone e 
-        outro layout vertical para o título e valor, para estilo de dashboard.
-        """
-        # Layout principal da subseção (horizontal)
-        subsection_layout = QHBoxLayout()
-        subsection_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        subsection_layout.setContentsMargins(10, 10, 10, 10)
-        subsection_layout.setSpacing(15)
+        # Adiciona o layout de dispensa ao layout principal
+        main_layout.addLayout(contratos_layout)
 
-        # Layout vertical para o ícone
-        icon_layout = QVBoxLayout()
-        icon_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Adiciona um QScrollArea para rolagem
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidget(central_widget)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # Somente barra vertical
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
-        icon_button = QPushButton()
-        icon_button.setIcon(self.icons[icon_key])
-        icon_button.setIconSize(QSize(40, 40))
-        icon_button.setFlat(True)  # Remove a borda do botão
-        icon_layout.addWidget(icon_button)
+        # Define o layout do widget principal para incluir a barra de rolagem
+        layout_with_scroll = QVBoxLayout(self)
+        layout_with_scroll.addWidget(scroll_area)
+        self.setLayout(layout_with_scroll)
 
-        # Layout vertical para o título e o valor
-        text_layout = QHBoxLayout()
-        text_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        
-        # Título
-        title_label = QLabel(label_text)
-        title_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        text_layout.addWidget(title_label)
+    def create_pie_chart(self, db_path, column_name, table_name, chart_title, max_width=400, max_height=300):
+        # Conecta ao banco de dados SQLite
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
 
-        # Valor
-        value_label = QLabel(value_text)
-        value_label.setFont(QFont("Arial", 22, QFont.Weight.Bold))
-        value_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        text_layout.addWidget(value_label)
+        # Executa a consulta para obter os dados
+        query = f"SELECT {column_name}, COUNT(*) FROM {table_name} GROUP BY {column_name}"
+        cursor.execute(query)
+        data = cursor.fetchall()
+        conn.close()
 
-        # Adiciona o layout do ícone e o layout de texto ao layout principal
-        subsection_layout.addLayout(icon_layout)
-        subsection_layout.addLayout(text_layout)
+        # Cria a série de dados para o gráfico de pizza
+        series = QPieSeries()
+        for value, count in data:
+            label = str(value) if value is not None else 'N/A'
+            slice_label = f"{count} {label}"
+            pie_slice = series.append(slice_label, count)
 
-        return subsection_layout
+            # Ajusta a posição e visibilidade do rótulo
+            pie_slice.setLabelVisible(True)
+            pie_slice.setLabelPosition(QPieSlice.LabelPosition.LabelOutside)
+            pie_slice.setLabelArmLengthFactor(0.1)
+
+            # Define a cor da fonte do rótulo para branco
+            pie_slice.setLabelBrush(QBrush(Qt.GlobalColor.white))
+
+            # Opcional: Destaca a fatia ao passar o mouse
+            pie_slice.setExploded(False)
+            pie_slice.hovered.connect(lambda hovered, s=pie_slice: s.setExploded(hovered))
+
+        # Cria o gráfico e adiciona a série de dados
+        chart = QChart()
+        chart.addSeries(series)
+        chart.legend().setVisible(False)
+
+        # Personaliza o título do gráfico
+        title_font = QFont("Arial", 14)
+
+        # Torna o fundo do gráfico transparente
+        chart.setBackgroundBrush(QBrush(Qt.GlobalColor.transparent))
+        chart.setBackgroundVisible(False)
+        chart.setPlotAreaBackgroundVisible(False)
+
+        # Remove as margens do gráfico
+        chart.setMargins(QMargins(0, 0, 0, 0))
+
+        # Ajusta o tamanho da área de plotagem para ocupar mais espaço
+        chart_layout = chart.layout()
+        chart_layout.setContentsMargins(0, 0, 0, 0)
+        # chart_layout.setSpacing(0)
+
+        # Cria o QChartView para exibir o gráfico
+        chart_view = QChartView(chart)
+        chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
+        chart_view.setStyleSheet("background: transparent")
+        chart_view.setContentsMargins(0, 0, 0, 0)
+
+        # Cria um widget para conter o título e o gráfico
+        chart_widget = QWidget()
+        widget_layout = QVBoxLayout(chart_widget)
+        widget_layout.setContentsMargins(0, 0, 0, 0)
+        widget_layout.setSpacing(0)
+
+        # Cria um QLabel para o título
+        title_label = QLabel(chart_title)
+        title_label.setFont(title_font)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_label.setStyleSheet("color: lightgray;")
+
+        # Define tamanhos mínimos e máximos para o gráfico
+        chart_widget.setMaximumSize(max_width, max_height) 
+        chart_widget.setMinimumHeight(300)
+        # Adiciona o título e o gráfico ao layout do widget
+        widget_layout.addWidget(title_label)
+        widget_layout.addWidget(chart_view)
+
+        return chart_widget

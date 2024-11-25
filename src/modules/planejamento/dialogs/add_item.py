@@ -4,6 +4,7 @@ from PyQt6.QtCore import *
 from pathlib import Path
 from datetime import datetime
 import sqlite3
+from src.modules.utils.add_button import add_button_func
 
 class AddItemDialog(QDialog):
     def __init__(self, icons, database_path, controle_om, parent=None):
@@ -15,8 +16,6 @@ class AddItemDialog(QDialog):
         self.setWindowTitle("Adicionar Item")
         self.setWindowIcon(self.icons["plus"])
 
-        # self.setFixedSize(550, 250)
-        # self.database_manager = DatabaseManager(self.database_path)
         self.layout = QVBoxLayout(self)
         self.setStyleSheet("QWidget { font-size: 14px; }")
 
@@ -26,11 +25,12 @@ class AddItemDialog(QDialog):
 
     def setup_ui(self):
         self.tipo_cb, self.numero_le, self.ano_le = self.setup_first_line()
+        self.situacao_cb = self.setup_second_line()  # Adicionei este método
         self.objeto_le = self.setup_third_line()
         self.nup_le, self.sigla_om_cb = self.setup_fourth_line()
         self.material_radio, self.servico_radio = self.setup_fifth_line()
-        self.setup_save_button()
-
+        add_button_func("Adicionar", "plus", self.on_save, self.layout, self.icons, tooltip="Adicionar Item ao Banco de Dados")
+                    
     def setup_first_line(self):
         hlayout = QHBoxLayout()
         tipo_cb = QComboBox()
@@ -42,16 +42,27 @@ class AddItemDialog(QDialog):
         numero_le.setValidator(QIntValidator(1, 99999))
         ano_le.setValidator(QIntValidator(1000, 9999))
         ano_le.setText(str(datetime.now().year))
-
         hlayout.addWidget(QLabel("Tipo:"))
         hlayout.addWidget(tipo_cb)
         hlayout.addWidget(QLabel("Número:"))
         hlayout.addWidget(numero_le)
         hlayout.addWidget(QLabel("Ano:"))
         hlayout.addWidget(ano_le)
+        add_button_func("Renumerar", "rotate", self.open_id_processo_dialog, hlayout, self.icons, tooltip="Renumerar Licitação")
         self.layout.addLayout(hlayout)
 
         return tipo_cb, numero_le, ano_le
+
+    def setup_second_line(self):
+        hlayout = QHBoxLayout()
+        situacao_cb = QComboBox()
+        situacoes = ["Planejamento", "Consolidação de Demanda", "Em andamento", "Concluído"]
+        situacao_cb.addItems(situacoes)
+        situacao_cb.setCurrentIndex(0)
+        hlayout.addWidget(QLabel("Situação:"))
+        hlayout.addWidget(situacao_cb)
+        self.layout.addLayout(hlayout)
+        return situacao_cb
 
     def setup_third_line(self):
         hlayout = QHBoxLayout()
@@ -89,13 +100,9 @@ class AddItemDialog(QDialog):
         self.layout.addLayout(hlayout)
         return material_radio, servico_radio
 
-    def setup_save_button(self):
-        btn = QPushButton("Adicionar Item")
-        btn.clicked.connect(self.on_save)
-        self.layout.addWidget(btn)
-
     def on_save(self):
         data = self.get_data()
+        print(f"Dados recebidos para salvar: {data}")  # Adicionado para depuração
         try:
             if self.check_id_exists(data['id_processo']):
                 res = QMessageBox.question(
@@ -150,6 +157,11 @@ class AddItemDialog(QDialog):
         material_servico = "Material" if self.material_radio.isChecked() else "Serviço"
         tipo_de_processo = self.tipo_cb.currentText()
 
+        # Ajuste para obter o valor correto de 'situacao'
+        if hasattr(self, 'situacao'):
+            situacao = self.situacao  # Valor atribuído no open_id_processo_dialog
+        else:
+            situacao = self.situacao_cb.currentText()  # Valor selecionado no combo box
 
         data = {
             'tipo': tipo_de_processo,
@@ -161,6 +173,10 @@ class AddItemDialog(QDialog):
             'orgao_responsavel': orgao_responsavel,
             'uasg': uasg,
             'material_servico': material_servico,
+            'objeto_completo': getattr(self, 'objeto_completo', ''),
+            'valor_total': getattr(self, 'valor_total', 0.0),
+            'srp': getattr(self, 'srp', False),
+            'situacao': situacao,
         }
 
         # Mapeamento do tipo de processo para o nome interno
@@ -212,3 +228,151 @@ class AddItemDialog(QDialog):
             self.om_details = {"CeIMBra": {"orgao_responsavel": "Centro de Intendência da Marinha em Brasília", "uasg": "787010"}}
             self.sigla_om_cb.addItem("CeIMBra")
             self.sigla_om_cb.setCurrentText("CeIMBra")
+
+
+    def open_id_processo_dialog(self):
+        try:
+            with sqlite3.connect(self.database_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id_processo, objeto FROM controle_licitacao ORDER BY id_processo")
+                id_processo_objeto_list = cursor.fetchall()
+
+            if not id_processo_objeto_list:
+                QMessageBox.information(self, "Informação", "Não há id_processo disponível.")
+                return
+
+            # Cria uma instância do diálogo personalizado
+            dialog = IdProcessoDialog(self.icons, id_processo_objeto_list, parent=self)
+            if dialog.exec():
+                selected_id = dialog.get_selected_id()
+                if selected_id:
+                    # Busca os dados correspondentes ao 'id_processo' selecionado
+                    with sqlite3.connect(self.database_path) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            SELECT tipo, numero, ano, objeto, nup, sigla_om, material_servico, objeto_completo, valor_total, srp, situacao
+                            FROM controle_licitacao WHERE id_processo = ?
+                        """, (selected_id,))
+                        result = cursor.fetchone()
+                        if result:
+                            (tipo, numero_antigo, ano_antigo, objeto_antigo, nup, sigla_om, material_servico,
+                             objeto_completo, valor_total, srp, situacao) = result
+                        else:
+                            QMessageBox.warning(self, "Erro", "Dados não encontrados para o id_processo selecionado.")
+                            return
+
+                    # Exibe a mensagem de confirmação
+                    res = QMessageBox.question(
+                        self,
+                        "Confirmação",
+                        f"Deseja renumerar a licitação {selected_id} - {objeto_antigo}?",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No
+                    )
+                    if res == QMessageBox.StandardButton.Yes:
+                        print(f"Renumerando a licitação: {selected_id} - {objeto_antigo}")
+                        # Atualiza os campos com os dados selecionados
+                        self.tipo_cb.setCurrentText(tipo)
+                        # self.numero_le.setText(numero)  # Comentado conforme seu código
+                        self.ano_le.setText(ano_antigo)
+                        self.objeto_le.setText(objeto_antigo)
+                        self.nup_le.setText(nup)
+                        index = self.sigla_om_cb.findText(sigla_om)
+                        if index != -1:
+                            self.sigla_om_cb.setCurrentIndex(index)
+                        else:
+                            self.sigla_om_cb.setCurrentText(sigla_om)
+                        # Atualiza o radio button de material/serviço
+                        if material_servico == "Material":
+                            self.material_radio.setChecked(True)
+                        else:
+                            self.servico_radio.setChecked(True)
+                        # Salva outras variáveis não visíveis
+                        self.objeto_completo = objeto_completo
+                        self.valor_total = valor_total
+                        self.srp = srp
+                        self.situacao = situacao
+
+                        # Atualiza o combo box de situação
+                        index = self.situacao_cb.findText(situacao)
+                        if index != -1:
+                            self.situacao_cb.setCurrentIndex(index)
+                        else:
+                            self.situacao_cb.addItem(situacao)
+                            self.situacao_cb.setCurrentText(situacao)
+
+                        # **Início das alterações para adicionar o texto ao objeto do item original**
+
+                        # Obter os valores de 'numero' e 'ano' da nova licitação
+                        novo_numero = self.numero_le.text()
+                        novo_ano = self.ano_le.text()
+
+                        # Construir o texto a ser adicionado
+                        renumerado_texto = f"(Renumerado {novo_numero}/{novo_ano}) "
+
+                        # Atualizar o campo 'objeto' do item original no banco de dados
+                        novo_objeto_antigo = renumerado_texto + objeto_antigo
+
+                        try:
+                            with sqlite3.connect(self.database_path) as conn:
+                                cursor = conn.cursor()
+                                cursor.execute("""
+                                    UPDATE controle_licitacao
+                                    SET objeto = ?
+                                    WHERE id_processo = ?
+                                """, (novo_objeto_antigo, selected_id))
+                                conn.commit()
+                                print(f"Objeto do item original atualizado para: {novo_objeto_antigo}")
+                        except Exception as e:
+                            print(f"Erro ao atualizar o objeto do item original: {e}")
+
+                        # **Fim das alterações**
+
+        except Exception as e:
+            print(f"Erro ao carregar id_processo: {e}")
+            QMessageBox.warning(self, "Erro", f"Não foi possível carregar os id_processo.\nErro: {e}")
+
+
+# Classe do diálogo personalizado
+class IdProcessoDialog(QDialog):
+    def __init__(self, icons, id_processo_objeto_list, parent=None):
+        super().__init__(parent)
+        self.icons = icons
+        self.id_processo_objeto_list = id_processo_objeto_list
+        self.selected_id = None
+        self.setWindowTitle("Renumerar Licitação")
+        self.setWindowIcon(self.icons["rotate"])  # Define o ícone da janela como "rotate"
+
+        self.layout = QVBoxLayout(self)
+        self.setup_ui()
+
+    def setup_ui(self):
+        label = QLabel("Selecione o id_processo:")
+        self.list_widget = QListWidget()
+        # Adiciona os itens no formato "id_processo - objeto"
+        for id_processo, objeto in self.id_processo_objeto_list:
+            self.list_widget.addItem(f"{id_processo} - {objeto}")
+        self.list_widget.itemDoubleClicked.connect(self.accept_selection)
+
+        btn_layout = QHBoxLayout()
+        # Utiliza o 'add_button_func' conforme o seu código
+        add_button_func("Selecionar", "check", self.accept_selection, btn_layout, self.icons, tooltip="Selecionar o número da licitação para ser renumerado")        
+        add_button_func("Cancelar", "cancel", self.reject, btn_layout, self.icons, tooltip="Fechar a Janela")        
+
+        self.layout.addWidget(label)
+        self.layout.addWidget(self.list_widget)
+        self.layout.addLayout(btn_layout)
+
+    def accept_selection(self):
+        current_item = self.list_widget.currentItem()
+        if current_item:
+            # Extrai o 'id_processo' do item selecionado
+            text = current_item.text()
+            id_processo = text.split(' - ')[0]  # Assume que o 'id_processo' não contém ' - '
+            self.selected_id = id_processo
+            self.accept()
+        else:
+            QMessageBox.warning(self, "Aviso", "Por favor, selecione um id_processo.")
+
+    def get_selected_id(self):
+        return self.selected_id
