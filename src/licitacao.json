@@ -86,5 +86,22 @@
         {
             "comentario": "rtestest"
         }
+    ],
+    "PE 90012/2024": [
+        {
+            "comentario": "O processo foi enviado em xxxxx  para análise do CJACM."
+        },
+        {
+            "comentario": "Nota Técnica atendida em 25/11/2024 11:14:16 conforme as recomendações solicitadas."
+        },
+        {
+            "comentario": "As recomendações foram atendidas em 25/11/2024 11:14:22."
+        },
+        {
+            "comentario": "A IRP foi divulgada em 25/11/2024 11:14:24."
+        },
+        {
+            "comentario": "teste creni"
+        }
     ]
 }

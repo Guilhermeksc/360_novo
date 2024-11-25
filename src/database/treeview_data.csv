@@ -2,17 +2,17 @@ Nº,Identificação,Marcador,Início,Fim,Págs
 01,Portaria XXXX Com7°DN de Designação de Equipe de Planejamento,portaria_plan,1,4,4
 02,Estudo Técnico Preliminar (ETP),etp,5,32,28
 03,Despacho,despacho,33,34,2
-04,Autorização para Abertura de Processo,termo_abertura,35,36,2
-05,Documento de Formalização da Demanda (DFD),dfd,37,46,10
-06,Minuta do Edital,minuta_edital,47,73,27
-07,Comunicação Padronizada,termo,74,75,2
-08,Capa de Abertura do Pregão Eletrônico e Termo de Autuação,termo_autuacao,76,79,4
-09,Minuta do Contrato,minuta_contrato,80,88,9
-10,Termo de Referência,tr,89,108,20
-11,Portaria XXXX de Designação de Militares para Comissão de Licitação,portaria_comissao,109,112,4
-12,Minuta da Ata de Registro de Preços,minuta_arp,113,115,3
-13,Lista de Verificação,checklist,116,122,7
-14,Matriz de Gerenciamento de Riscos,mr,123,133,11
+04,Minuta da Ata de Registro de Preços,minuta_arp,35,37,3
+05,Documento de Formalização da Demanda (DFD),dfd,38,47,10
+06,Matriz de Gerenciamento de Riscos,mr,48,58,11
+07,Minuta do Edital,minuta_edital,59,85,27
+08,Comunicação Padronizada,termo,86,87,2
+09,Minuta do Contrato,minuta_contrato,88,96,9
+10,Termo de Referência,tr,97,116,20
+11,Capa de Abertura do Pregão Eletrônico e Termo de Autuação,termo_autuacao,117,120,4
+12,Portaria XXXX de Designação de Militares para Comissão de Licitação,portaria_comissao,121,124,4
+13,Lista de Verificação,checklist,125,131,7
+14,Autorização para Abertura de Processo,termo_abertura,132,133,2
 15,Pesquisa de Preços,pesquisa_precos,134,136,3
 16,Comprovação da Divulgação da Intenção do Registro de Preços,termo_irp,137,138,2
 17,Nota Técnica,nota_tecnica,139,146,8

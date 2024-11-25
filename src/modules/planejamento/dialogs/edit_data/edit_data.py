@@ -7,6 +7,7 @@ from src.modules.dispensa_eletronica.dados_api.api_consulta import ConsultaAPIDi
 from src.modules.dispensa_eletronica.dialogs.edit_data.apoio_data import COLUNAS_LEGIVEIS, COLUNAS_LEGIVEIS_INVERSO, CORRECAO_VALORES, STYLE_GROUP_BOX
 from src.modules.dispensa_eletronica.dialogs.edit_data.widgets.formulario import TableCreationWorker
 from src.modules.planejamento.dialogs.checklist import ChecklistWidget
+from src.modules.planejamento.dialogs.edit_data.widgets.msg import MensagensManager
 from src.modules.utils.linha_layout import linha_divisoria_layout, linha_divisoria_sem_spacer_layout
 from pathlib import Path
 from src.config.paths import CONTROLE_DADOS, CONTROLE_PRAZOS, LICITACAO_CONTROLE_JSON
@@ -51,6 +52,7 @@ def create_icon_checkbox(label_text, icon_unchecked, icon_checked, is_checked=Fa
     layout.addWidget(label)
 
     return layout, checkbox
+
 class EditarDadosWindow(QMainWindow):
     save_data_signal = pyqtSignal(dict)  # Sinal para salvar dados
     window_closed = pyqtSignal()  # Sinal para notificar fechamento
@@ -69,6 +71,8 @@ class EditarDadosWindow(QMainWindow):
         # Configuração adicional
         self.carregar_referencias()
         verificar_criar_json(LICITACAO_CONTROLE_JSON)
+        # Inicializa o gerenciador de mensagens
+        self.mensagens_manager = MensagensManager(self.icons, self.dados)     
         self.setup_ui()
 
     def closeEvent(self, event):
@@ -935,50 +939,11 @@ class EditarDadosWindow(QMainWindow):
         return frame
 
     def stacked_widget_mensagens(self, data):
-        frame = QFrame()
-        main_layout = QHBoxLayout()  # Layout principal
+        # Retorna o gerenciador de mensagens
+        return self.mensagens_manager
 
-        # Layout para botões à esquerda
-        msg_button_layout = QVBoxLayout()
-        # Exemplo de botões adicionados ao layout de botões
-        btn_enviar = QPushButton("Enviar")
-        btn_recebidas = QPushButton("Recebidas")
-        btn_arquivar = QPushButton("Arquivar")
-        msg_button_layout.addWidget(btn_enviar)
-        msg_button_layout.addWidget(btn_recebidas)
-        msg_button_layout.addWidget(btn_arquivar)
-        msg_button_layout.addStretch()  # Adiciona um espaço flexível
-
-        # Layout para o conteúdo à direita
-        msg_content_layout = QVBoxLayout()
-        msg_label = QLabel("Conteúdo da Mensagem")
-        msg_content_layout.addWidget(msg_label)
-
-        # Sub-layout para os dois campos de texto
-        text_fields_layout = QHBoxLayout()
-
-        # Campo para edição do texto
-        self.edit_text_field = QTextEdit()
-        self.edit_text_field.setPlaceholderText("Edite o texto da mensagem aqui...")
-        self.edit_text_field.textChanged.connect(self.atualizar_texto_padronizado)
-        text_fields_layout.addWidget(self.edit_text_field)
-
-        # Campo para texto padronizado
-        self.standard_text_field = QTextEdit()
-        self.standard_text_field.setReadOnly(True)
-        self.standard_text_field.setPlaceholderText("Texto padronizado da mensagem...")
-        text_fields_layout.addWidget(self.standard_text_field)
-
-        # Adiciona o sub-layout de campos ao layout de conteúdo
-        msg_content_layout.addLayout(text_fields_layout)
-
-        # Adiciona os layouts ao layout principal
-        main_layout.addLayout(msg_button_layout)
-        main_layout.addLayout(msg_content_layout)
-
-        # Configura o frame com o layout principal
-        frame.setLayout(main_layout)
-        return frame
+    def teste(self):
+        print("Teste de função")
 
     def atualizar_texto_padronizado(self):
         """Atualiza o campo de texto padronizado sempre que o texto editável for alterado."""

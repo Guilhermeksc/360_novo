@@ -8,6 +8,7 @@ import json
 import re
 from src.config.paths import CONTROLE_PRAZOS
 from datetime import datetime
+
 class ControlePrazosDialog(QDialog):
     def __init__(self, model, icons, select_year, parent=None):
         super().__init__(parent)

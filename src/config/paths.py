@@ -18,6 +18,7 @@ DATA_CONTRATOS_PATH = DATABASE_DIR / "controle_contrato.db"
 CONTROLE_ASS_CONTRATOS_DADOS = DATABASE_DIR / "controle_assinatura.db"
 CONTROLE_DADOS = DATABASE_DIR / "controle_dados.db"
 
+MSG_LICITACAO_JSON = BASE_DIR / "msg_licitacao.json"
 LICITACAO_CONTROLE_JSON = BASE_DIR / "licitacao.json"
 CONTROLE_PRAZOS = BASE_DIR / "controle_status.json"
 CONFIG_FILE = BASE_DIR / "config.json"

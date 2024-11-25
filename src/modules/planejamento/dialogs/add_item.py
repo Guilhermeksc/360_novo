@@ -301,14 +301,8 @@ class AddItemDialog(QDialog):
                             self.situacao_cb.addItem(situacao)
                             self.situacao_cb.setCurrentText(situacao)
 
-                        # **Início das alterações para adicionar o texto ao objeto do item original**
-
-                        # Obter os valores de 'numero' e 'ano' da nova licitação
-                        novo_numero = self.numero_le.text()
-                        novo_ano = self.ano_le.text()
-
                         # Construir o texto a ser adicionado
-                        renumerado_texto = f"(Renumerado {novo_numero}/{novo_ano}) "
+                        renumerado_texto = f"(Renumerado) "
 
                         # Atualizar o campo 'objeto' do item original no banco de dados
                         novo_objeto_antigo = renumerado_texto + objeto_antigo
@@ -325,8 +319,6 @@ class AddItemDialog(QDialog):
                                 print(f"Objeto do item original atualizado para: {novo_objeto_antigo}")
                         except Exception as e:
                             print(f"Erro ao atualizar o objeto do item original: {e}")
-
-                        # **Fim das alterações**
 
         except Exception as e:
             print(f"Erro ao carregar id_processo: {e}")

@@ -12,7 +12,6 @@ from openpyxl.styles import Font, Border, Side, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from src.modules.utils.add_button import add_button, add_button_func
 
-
 class FormularioExcel(QObject):
     formulario_carregado = pyqtSignal(pd.DataFrame)  # Sinal para enviar os dados carregados
 
