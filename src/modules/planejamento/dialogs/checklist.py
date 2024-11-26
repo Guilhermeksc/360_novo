@@ -21,6 +21,8 @@ from functools import partial
 import subprocess
 import sys
 from src.config.paths import *
+from src.modules.utils.add_button import add_button_func
+from src.modules.utils.linha_layout import linha_divisoria_layout
 
 def remover_caracteres_especiais(texto):
     mapa_acentos = {
@@ -282,6 +284,10 @@ class ChecklistWidget(QWidget):
         self.icons = icons_path
         self.config_manager = ConfigManager(BASE_DIR / "config.json")
         self.df_registro = df_registro_selecionado
+
+        # Print para verificar o tipo e conteúdo de df_registro
+        print(f"Tipo de self.df_registro: {type(self.df_registro)}")
+        print(f"Conteúdo de self.df_registro: {self.df_registro}")
         self.layout = QVBoxLayout(self)
 
         self.tree = DraggableTreeWidget(self)
@@ -297,6 +303,9 @@ class ChecklistWidget(QWidget):
         self.tree.setColumnWidth(1, 700)
         self.tree.setColumnWidth(2, 300)
         self.layout.addWidget(self.tree)
+        linha_divisoria, spacer_baixo_linha = linha_divisoria_layout()
+        self.layout.addWidget(linha_divisoria)
+        self.layout.addSpacerItem(spacer_baixo_linha)        
         self.setupBottomButtons()
         self.load_data()
 
@@ -321,11 +330,11 @@ class ChecklistWidget(QWidget):
             return
 
         # Processamento do ID do processo e criação do nome da pasta principal
-        id_processo_original = self.df_registro['id_processo'].iloc[0]
-        id_processo_novo = id_processo_original.replace('/', '-')  # Substituir '/' por '-' para compatibilidade de nome de pasta
-        objeto = self.df_registro['objeto'].iloc[0]
+        id_processo_original = self.df_registro.get('id_processo', 'N/A')
+        id_processo_novo = id_processo_original.replace('/', '-')  # Substituir '/' por '-'
+        objeto = self.df_registro.get('objeto', '')
         nome_pasta = f"{id_processo_novo} - {remover_caracteres_especiais(objeto)}"
-        
+
         # Caminho para a pasta principal usando self.pasta_base
         pasta_destino = self.pasta_base / nome_pasta
         pasta_destino.mkdir(parents=True, exist_ok=True)
@@ -337,6 +346,24 @@ class ChecklistWidget(QWidget):
         # Verifica se a subpasta existe e cria se necessário
         subpasta_destino.mkdir(parents=True, exist_ok=True)
 
+        # Verificar se o template existe antes de continuar
+        template_path = TEMPLATE_DIR / "template_checklist.docx"
+        if not template_path.exists():
+            QMessageBox.warning(self, "Erro", f"O template não foi encontrado em: {template_path}")
+            return  # Interrompe a execução e volta ao estado anterior
+
+        template_path_nota = TEMPLATE_DIR / "template_nota_tecnica.docx"
+        # Verificar se o arquivo de template existe
+        if not template_path_nota.exists():
+            QMessageBox.warning(self, "Erro", f"O template não foi encontrado em: {template_path_nota}")
+            return
+
+        template_path_autuacao = TEMPLATE_DIR / "template_autuacao.docx"
+        # Verificar se o arquivo de template existe
+        if not template_path_autuacao.exists():
+            QMessageBox.warning(self, "Erro", f"O template não foi encontrado em: {template_path_autuacao}")
+            return
+        
         # Chamada para processar o PDF e substituir marcadores
         split_pdf_using_dataframe(arquivo_numerado, self.pasta_base, subpasta_destino)
         
@@ -345,8 +372,10 @@ class ChecklistWidget(QWidget):
         self.substituir_variaveis_docx(df_treeview)
         self.substituir_variaveis_nota_tecnica()  # Corrigido para refletir a nova assinatura do método
         substituir_marcadores_com_relacao(TEMPLATE_AUTUACAO, subpasta_destino, self.df_registro)
+
         # Abre a pasta no gerenciador de arquivos
         open_folder(subpasta_destino)
+
 
     def substituir_variaveis_nota_tecnica(self):
         if self.df_registro is None:
@@ -358,22 +387,28 @@ class ChecklistWidget(QWidget):
 
         ultima_folha = df['Fim'].iloc[-1]
         quantidade_folhas = f"{ultima_folha} ({num2words(ultima_folha, lang='pt_BR')}) folhas"
-        objeto = self.df_registro['objeto'].iloc[0]
-        id_processo_original = self.df_registro['id_processo'].iloc[0]
+        id_processo_original = self.df_registro.get('id_processo', 'N/A')
         id_processo_novo = id_processo_original.replace('/', '-')
-
+        objeto = remover_caracteres_especiais(self.df_registro.get('objeto', ''))
+        
         template_path = TEMPLATE_DIR / "template_nota_tecnica.docx"
+        # Verificar se o arquivo de template existe
+        if not template_path.exists():
+            QMessageBox.warning(self, "Erro", f"O template não foi encontrado em: {template_path}")
+            return
+                
         doc = DocxTemplate(template_path)
         
         context = {
-            'numero': self.df_registro['numero'].iloc[0],
-            'ano': self.df_registro['ano'].iloc[0],
-            'nup': self.df_registro['nup'].iloc[0],
-            'tipo': self.df_registro['tipo'].iloc[0],
-            'objeto_completo': self.df_registro['objeto_completo'].iloc[0],
+            'numero': self.df_registro.get('numero', 'N/A'),
+            'ano': self.df_registro.get('ano', 'N/A'),
+            'nup': self.df_registro.get('nup', 'N/A'),
+            'tipo': self.df_registro.get('tipo', 'N/A'),
+            'objeto_completo': self.df_registro.get('objeto_completo', 'N/A'),
             'quantidade_folhas': quantidade_folhas,
-            'descricao_servico': "Aquisição de" if self.df_registro['material_servico'].iloc[0] == "material" else "Contratação de empresa especializada em"
+            'descricao_servico': "Aquisição de" if self.df_registro.get('material_servico', '') == "material" else "Contratação de empresa especializada em"
         }
+
 
         # Adição de informações dinâmicas de páginas ao contexto
         additional_context = {row['Marcador']: f"Fls. {row['Início']} a {row['Fim']}" for _, row in df.iterrows()}
@@ -391,13 +426,13 @@ class ChecklistWidget(QWidget):
         doc.save(output_path)
 
         return output_path
-    
+        
     def substituir_variaveis_docx(self, df_treeview):
-        num_pregao = self.df_registro['numero'].iloc[0]
-        ano_pregao = self.df_registro['ano'].iloc[0]
-        id_processo_original = self.df_registro['id_processo'].iloc[0]
+        num_pregao = self.df_registro.get('numero', 'N/A')
+        ano_pregao = self.df_registro.get('ano', 'N/A')
+        id_processo_original = self.df_registro.get('id_processo', 'N/A')
         id_processo_novo = id_processo_original.replace('/', '-')
-        objeto = remover_caracteres_especiais(self.df_registro['objeto'].iloc[0])
+        objeto = remover_caracteres_especiais(self.df_registro.get('objeto', ''))
         nome_pasta = f"{id_processo_novo} - {objeto}"
 
         # Caminho para a pasta principal usando pasta_base atualizada
@@ -409,16 +444,26 @@ class ChecklistWidget(QWidget):
         subpasta_final = pasta_destino / subpasta_checklist
         subpasta_final.mkdir(parents=True, exist_ok=True)
 
-        # Caminho para o template e inicialização do DocxTemplate
+        # Caminho para o template
         template_path = TEMPLATE_DIR / "template_checklist.docx"
+
+        # Verificar se o arquivo de template existe
+        if not template_path.exists():
+            QMessageBox.warning(self, "Erro", f"O template não foi encontrado em: {template_path}")
+            return
+
+        # Inicialização do DocxTemplate
         doc = DocxTemplate(template_path)
 
+        # Renderizar o contexto
         context = {row['Marcador']: f"Fls. {row['Início']} a {row['Fim']}" for index, row in df_treeview.iterrows()}
         doc.render(context)
 
+        # Salvar o documento gerado
         output_path = subpasta_final / f"PE {num_pregao}-{ano_pregao} - Checklist.docx"
         doc.save(output_path)
         print(f"Documento salvo em: {output_path}")
+
 
     def process_pdf(self, arquivo_numerado):
         try:
@@ -441,44 +486,18 @@ class ChecklistWidget(QWidget):
         self.buttons_layout = QHBoxLayout()
         self.create_buttons()
         self.layout.addLayout(self.buttons_layout)
-                
+                 
     def create_buttons(self):
-        icon_size = QSize(40, 40)  # Tamanho do ícone para todos os botões
-        self.button_specs = [
-            ("Sapiens", self.icons['stats'], self.abrir_link_sapiens, "Carregar o link do Sapiens", icon_size),
-            ("Resetar Padrão", self.icons['stats'], self.resetar_treeview, "Atualizar a visualização", icon_size),
-            ("Editar Modelo", self.icons['stats'], self.editarTemplate, "Editar o Checklist da AGU", icon_size),
-            ("Numerar", self.icons['stats'], numerar_pdf_gui, "Numerar o PDF", icon_size),
-            ("Processar", self.icons['stats'], lambda: self.processar_pdf_na_integra_e_gerar_documentos(), "Processar o PDF", icon_size),            ("Importar", self.icons['stats'], self.onLoadItems, "Importar dados", icon_size),
-            ("Salvar", self.icons['stats'], self.onSaveItems, "Salvar as alterações", icon_size),
-        ]
-        #     ("Sapiens", self.icons['sapiens'], self.abrir_link_sapiens, "Carregar o link do Sapiens", icon_size),
-        #     ("Resetar Padrão", self.icons['rotate'], self.resetar_treeview, "Atualizar a visualização", icon_size),
-        #     ("Editar Modelo", self.icons['word'], self.editarTemplate, "Editar o Checklist da AGU", icon_size),
-        #     ("Numerar", self.icons['page'], numerar_pdf_gui, "Numerar o PDF", icon_size),
-        #     ("Processar", self.icons['processing'], lambda: self.processar_pdf_na_integra_e_gerar_documentos(), "Processar o PDF", icon_size),            ("Importar", self.icons['import'], self.onLoadItems, "Importar dados", icon_size),
-        #     ("Salvar", self.icons['save'], self.onSaveItems, "Salvar as alterações", icon_size),
-        # ]
-
-        for text, icon, callback, tooltip, icon_size in self.button_specs:
-            btn = create_button(text=text, icon=icon, callback=callback, tooltip_text=tooltip, parent=self, icon_size=icon_size)
-            self.buttons_layout.addWidget(btn)
+        add_button_func("Sapiens", "sapiens", self.abrir_link_sapiens, self.buttons_layout, self.icons, tooltip="Carregar o Formulário")       
+        add_button_func("Resetar Padrão", "rotate", self.resetar_treeview, self.buttons_layout, self.icons, tooltip="Carregar o Formulário")       
+        add_button_func("Numerar", "reckoning", numerar_pdf_gui, self.buttons_layout, self.icons, tooltip="Carregar o Formulário")       
+        add_button_func("Processar", "processing", lambda: self.processar_pdf_na_integra_e_gerar_documentos(), self.buttons_layout, self.icons, tooltip="Carregar o Formulário")       
+        add_button_func("Importar", "excel_down", self.onLoadItems, self.buttons_layout, self.icons, tooltip="Carregar o Formulário")       
+        add_button_func("Salvar", "excel_up", self.onSaveItems, self.buttons_layout, self.icons, tooltip="Carregar o Formulário")       
 
     def abrir_link_sapiens(self):
         url = "https://supersapiens.agu.gov.br/auth/login"
         webbrowser.open(url)
-
-    def editarTemplate(self):
-        template_path = TEMPLATE_DIR / "template_checklist.docx"
-        try:
-            if sys.platform == "win32":
-                subprocess.run(["start", "winword", str(template_path)], check=True, shell=True)
-            elif sys.platform == "darwin":  # macOS
-                subprocess.run(["open", str(template_path)], check=True)
-            else:  # linux variants
-                subprocess.run(["xdg-open", str(template_path)], check=True)
-        except subprocess.CalledProcessError as e:
-            QMessageBox.warning(self, "Erro", f"Não foi possível abrir o documento: {e}")
 
     def onSaveItems(self):
         # Pedir ao usuário para escolher o local e o nome do arquivo para salvar
@@ -742,44 +761,11 @@ def substituir_variaveis_docx(df_registro_selecionado, df):
     doc.save(output_path)
     return output_path
 
-def processar_pdf_na_integra_e_gerar_documentos(df_registro_selecionado):
-    global GLOBAL_SPLIT_DIR
-
-    # Abrir caixa de diálogo para selecionar o arquivo PDF numerado
-    arquivo_numerado, _ = QFileDialog.getOpenFileName(caption="Selecione o arquivo PDF numerado", filter="PDF Files (*.pdf)")
-    if not arquivo_numerado:
+def substituir_marcadores_com_relacao(docx_path, lv_split_final_dir, df_registro_selecionado):
+    if not isinstance(df_registro_selecionado, dict):
+        QMessageBox.warning(None, "Erro", "Os dados do registro selecionado não estão no formato esperado.")
         return
 
-    # Processamento do ID do processo e criação do nome da pasta principal
-    id_processo_original = df_registro_selecionado['id_processo'].iloc[0]
-    id_processo_novo = id_processo_original.replace('/', '-')  # Substituir '/' por '-' para compatibilidade de nome de pasta
-    objeto = df_registro_selecionado['objeto'].iloc[0]
-    nome_pasta = f"{id_processo_novo} - {remover_caracteres_especiais(objeto)}"
-    
-    # Caminho para a pasta principal no desktop
-    desktop_path = Path.home() / 'Desktop' / nome_pasta
-    desktop_path.mkdir(parents=True, exist_ok=True)
-
-    # Definição da subpasta "Checklist"
-    subpasta_checklist = f"{id_processo_novo} - Checklist"
-    subpasta_destino = desktop_path / subpasta_checklist
-    
-    # Verifica se a subpasta existe e cria se necessário
-    subpasta_destino.mkdir(parents=True, exist_ok=True)
-
-    # Configurar o diretório global para uso posterior
-    GLOBAL_SPLIT_DIR = subpasta_destino
-
-    GLOBAL_SPLIT_DIR = split_pdf_using_dataframe(arquivo_numerado, DATABASE_DIR, GLOBAL_SPLIT_DIR)
-    
-    df_treeview = load_treeview_data()
-    # Processamento do PDF e substituição de marcadores usando o TEMPLATE_AUTUACAO
-    substituir_marcadores_com_relacao(TEMPLATE_AUTUACAO, GLOBAL_SPLIT_DIR, df_registro_selecionado)
-    substituir_variaveis_docx(df_registro_selecionado, df_treeview)
-    substituir_variaveis_nota_tecnica(df_registro_selecionado, df_treeview)
-    open_folder(GLOBAL_SPLIT_DIR)
-
-def substituir_marcadores_com_relacao(docx_path, lv_split_final_dir, df_registro_selecionado):
     df = load_treeview_data()
     relacao_documentos = []
     for idx, row in enumerate(df.itertuples(), 1):
@@ -794,10 +780,11 @@ def substituir_marcadores_com_relacao(docx_path, lv_split_final_dir, df_registro
     quantidade_folhas = f"{ultima_folha} ({num2words(ultima_folha, lang='pt_BR')}) folhas"
     hoje = datetime.now().strftime("%d/%m/%Y")
 
-    num_pregao = df_registro_selecionado['numero'].iloc[0]
-    ano_pregao = df_registro_selecionado['ano'].iloc[0]
-    nup = df_registro_selecionado['nup'].iloc[0]
-    objeto = df_registro_selecionado['objeto'].iloc[0]
+    # Verificação e obtenção segura dos dados
+    num_pregao = df_registro_selecionado.get('numero', 'N/A')
+    ano_pregao = df_registro_selecionado.get('ano', 'N/A')
+    nup = df_registro_selecionado.get('nup', 'N/A')
+    objeto = df_registro_selecionado.get('objeto', '')
 
     doc = DocxTemplate(docx_path)
     context = {
@@ -816,107 +803,48 @@ def substituir_marcadores_com_relacao(docx_path, lv_split_final_dir, df_registro
     return output_path
 
 def substituir_variaveis_nota_tecnica(df_registro_selecionado, df):
+    if not isinstance(df_registro_selecionado, dict):
+        QMessageBox.warning(None, "Erro", "Os dados do registro selecionado não estão no formato esperado.")
+        return
+
     if df_registro_selecionado is None:
         QMessageBox.warning(None, "Seleção Necessária", "Por favor, selecione um registro na tabela antes de gerar um documento.")
-        return None
-    df = load_treeview_data()
+        return
 
-    # Criação de variáveis baseadas nos dados selecionados
+    df = load_treeview_data()
     ultima_folha = df['Fim'].iloc[-1]
     quantidade_folhas = f"{ultima_folha} ({num2words(ultima_folha, lang='pt_BR')}) folhas"
-    objeto = df_registro_selecionado['objeto'].iloc[0]
-
-    id_processo_original = df_registro_selecionado['id_processo'].iloc[0]
-    id_processo_novo = id_processo_original.replace('/', '-')
-
-    # Configuração do caminho do template e inicialização
-    template_path = TEMPLATE_DIR / "template_nota_tecnica.docx"
-    doc = DocxTemplate(template_path)
-    
-    # Contexto inicial com as variáveis básicas
-    initial_context = {
-        'numero': df_registro_selecionado['numero'].iloc[0],
-        'ano': df_registro_selecionado['ano'].iloc[0],
-        'nup': df_registro_selecionado['nup'].iloc[0],
-        'tipo': df_registro_selecionado['tipo'].iloc[0],
-        'objeto_completo': df_registro_selecionado['objeto_completo'].iloc[0],
-        'quantidade_folhas': quantidade_folhas,
-        'descricao_servico': "Aquisição de" if df_registro_selecionado['material_servico'].iloc[0] == "material" else "Contratação de empresa especializada em"
-    }
-    print("Initial Context:", initial_context)
-
-    nome_pasta = f"{id_processo_novo} - {remover_caracteres_especiais(objeto)}"
-    
-    # Caminho para a pasta principal no desktop
-    desktop_path = Path.home() / 'Desktop' / nome_pasta
-    desktop_path.mkdir(parents=True, exist_ok=True)
-
-    # Definição da subpasta "Checklist"
-    subpasta_checklist = f"{id_processo_novo} - Checklist"
-    subpasta_destino = desktop_path / subpasta_checklist
-    
-    # Verifica se a subpasta existe e cria se necessário
-    subpasta_destino.mkdir(parents=True, exist_ok=True)
-        
-    # Renderização inicial
-    doc.render(initial_context)
-    
-    # Contexto adicional com informações dinâmicas de páginas
-    additional_context = {row['Marcador']: f"Fls. {row['Início']} a {row['Fim']}" if row['Início'] != row['Fim'] else f"Fl. {row['Início']}"
-                          for index, row in df.iterrows()}
-
-    print("Additional Context:", additional_context)
-
-    # Segunda renderização com o contexto adicional
-    doc.render(additional_context)
-
-    output_path = subpasta_destino / f"{id_processo_novo} - Nota Técnica.docx"   
-
-    doc.save(output_path)
-    return output_path
-
-def substituir_variaveis_nota_tecnica(df_registro_selecionado, df):
-    if df_registro_selecionado is None:
-        QMessageBox.warning(None, "Seleção Necessária", "Por favor, selecione um registro na tabela antes de gerar um documento.")
-        return None
-    df = load_treeview_data()
-
-    ultima_folha = df['Fim'].iloc[-1]
-    quantidade_folhas = f"{ultima_folha} ({num2words(ultima_folha, lang='pt_BR')}) folhas"
-    objeto = df_registro_selecionado['objeto'].iloc[0]
-    id_processo_original = df_registro_selecionado['id_processo'].iloc[0]
+    objeto = df_registro_selecionado.get('objeto', '')
+    id_processo_original = df_registro_selecionado.get('id_processo', 'N/A')
     id_processo_novo = id_processo_original.replace('/', '-')
 
     template_path = TEMPLATE_DIR / "template_nota_tecnica.docx"
+    if not template_path.exists():
+        QMessageBox.warning(None, "Erro", f"O template não foi encontrado em: {template_path}")
+        return
+
     doc = DocxTemplate(template_path)
-    
-    # Contexto inicial com as variáveis básicas
     context = {
-        'numero': df_registro_selecionado['numero'].iloc[0],
-        'ano': df_registro_selecionado['ano'].iloc[0],
-        'nup': df_registro_selecionado['nup'].iloc[0],
-        'tipo': df_registro_selecionado['tipo'].iloc[0],
-        'objeto_completo': df_registro_selecionado['objeto_completo'].iloc[0],
+        'numero': df_registro_selecionado.get('numero', 'N/A'),
+        'ano': df_registro_selecionado.get('ano', 'N/A'),
+        'nup': df_registro_selecionado.get('nup', 'N/A'),
+        'tipo': df_registro_selecionado.get('tipo', 'N/A'),
+        'objeto_completo': df_registro_selecionado.get('objeto_completo', 'N/A'),
         'quantidade_folhas': quantidade_folhas,
-        'descricao_servico': "Aquisição de" if df_registro_selecionado['material_servico'].iloc[0] == "material" else "Contratação de empresa especializada em"
+        'descricao_servico': "Aquisição de" if df_registro_selecionado.get('material_servico', '') == "material" else "Contratação de empresa especializada em"
     }
-    
-    # Adição de informações dinâmicas de páginas ao contexto existente
+
     additional_context = {row['Marcador']: f"Fls. {row['Início']} a {row['Fim']}" if row['Início'] != row['Fim'] else f"Fl. {row['Início']}"
                           for index, row in df.iterrows()}
     context.update(additional_context)
 
-    print("Unified Context:", context)
-
     nome_pasta = f"{id_processo_novo} - {remover_caracteres_especiais(objeto)}"
     desktop_path = Path.home() / 'Desktop' / nome_pasta
     desktop_path.mkdir(parents=True, exist_ok=True)
 
-    subpasta_checklist = f"{id_processo_novo} - Checklist"
-    subpasta_destino = desktop_path / subpasta_checklist
+    subpasta_destino = desktop_path / f"{id_processo_novo} - Nota Técnica"
     subpasta_destino.mkdir(parents=True, exist_ok=True)
-    
-    # Renderização única com o contexto completo
+
     doc.render(context)
     output_path = subpasta_destino / f"{id_processo_novo} - Nota Técnica.docx"
     doc.save(output_path)

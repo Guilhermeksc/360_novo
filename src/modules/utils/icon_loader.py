@@ -27,6 +27,7 @@ def load_icons():
     return {
         "priority": load_icon("priority.png"),
         "rotate": load_icon("rotate.png"),
+        "reckoning": load_icon("reckoning.png"),
         "synchronize": load_icon("synchronize.png"),
         "synchronize": load_icon("synchronize.png"),
         "comments": load_icon("comments.png"),
@@ -84,6 +85,8 @@ def load_icons():
         "excel_down": load_icon("excel_down.png"),
         "excel_up": load_icon("excel_up.png"),
         "acanto": load_icon("acanto.png"),
+        "brace": load_icon("brace.png"),
+        "timer": load_icon("timer.png"),
         "folder_v": load_icon("folder_v.png"),
         "folder_x": load_icon("folder_x.png"),
         "magnifying-glass": load_icon("magnifying-glass.png"),
@@ -136,6 +139,7 @@ def load_icons():
         "statistics": load_icon("statistics.png"),
         "sicaf": load_icon("sicaf.png"),
         "jigsaw": load_icon("jigsaw.png"),
+        "sapiens": load_icon("sapiens.png"),
         "montagem": load_icon("montagem.png"),
 
                 }

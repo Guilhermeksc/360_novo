@@ -17,7 +17,7 @@
         {
             "situacao": "Nota Técnica",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -33,7 +33,7 @@
         {
             "situacao": "Nota Técnica",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -49,7 +49,7 @@
         {
             "situacao": "Consolidação de Demanda",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -65,7 +65,7 @@
         {
             "situacao": "Montagem do Processo",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -81,7 +81,7 @@
         {
             "situacao": "Montagem do Processo",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -90,7 +90,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -106,7 +106,7 @@
         {
             "situacao": "Montagem do Processo",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -114,29 +114,29 @@
     "PE 90019/2024": [
         {
             "situacao": "Planejamento",
-            "data_inicial": "2024-11-24",
-            "data_final": "2024-11-24",
-            "dias_na_etapa": 0,
+            "data_inicial": "2024-06-04",
+            "data_final": "2024-07-08",
+            "dias_na_etapa": 34,
             "comentario": ""
         },
         {
             "situacao": "Nota Técnica",
-            "data_inicial": "2024-11-24",
-            "data_final": "2024-11-24",
-            "dias_na_etapa": 0,
+            "data_inicial": "2024-07-08",
+            "data_final": "2024-08-06",
+            "dias_na_etapa": 29,
             "comentario": ""
         },
         {
             "situacao": "Atendimento da NT",
-            "data_inicial": "2024-11-24",
+            "data_inicial": "2024-08-06",
             "data_final": "2024-11-24",
-            "dias_na_etapa": 0,
+            "dias_na_etapa": 110,
             "comentario": ""
         },
         {
             "situacao": "AGU",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -152,7 +152,7 @@
         {
             "situacao": "Atendimento da NT",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -168,7 +168,7 @@
         {
             "situacao": "Atendimento da NT",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -177,7 +177,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -186,7 +186,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -194,58 +194,58 @@
     "PE 90031/2024": [
         {
             "situacao": "Planejamento",
-            "data_inicial": "2024-11-24",
-            "data_final": "2024-11-24",
+            "data_inicial": "2024-08-05",
+            "data_final": "2024-08-05",
             "dias_na_etapa": 0,
             "comentario": ""
         },
         {
             "situacao": "Sessão Pública",
-            "data_inicial": "2024-11-24",
-            "data_final": "2024-11-24",
-            "dias_na_etapa": 0,
+            "data_inicial": "2024-08-05",
+            "data_final": "2024-08-27",
+            "dias_na_etapa": 22,
             "comentario": ""
         },
         {
             "situacao": "Pré-Publicação",
-            "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_inicial": "2024-08-27",
+            "data_final": "2024-10-07",
+            "dias_na_etapa": 41,
+            "comentario": ""
+        },
+        {
+            "situacao": "Assinatura Contrato",
+            "data_inicial": "2024-10-07",
+            "data_final": "2024-10-08",
             "dias_na_etapa": 1,
             "comentario": ""
         },
         {
-            "situacao": "Assinatura Contrato",
-            "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
-            "dias_na_etapa": 0,
-            "comentario": ""
-        },
-        {
             "situacao": "Sessão Pública",
-            "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
-            "dias_na_etapa": 0,
+            "data_inicial": "2024-10-08",
+            "data_final": "2024-11-05",
+            "dias_na_etapa": 28,
             "comentario": ""
         },
         {
             "situacao": "Pré-Publicação",
-            "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_inicial": "2024-11-05",
+            "data_final": "2024-11-05",
             "dias_na_etapa": 0,
             "comentario": ""
         },
         {
             "situacao": "Assinatura Contrato",
-            "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_inicial": "2024-11-05",
+            "data_final": "2024-11-05",
             "dias_na_etapa": 0,
             "comentario": ""
         },
         {
             "situacao": "Nota Técnica",
-            "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
-            "dias_na_etapa": 0,
+            "data_inicial": "2024-11-05",
+            "data_final": "2024-11-26",
+            "dias_na_etapa": 20,
             "comentario": ""
         }
     ],
@@ -260,7 +260,7 @@
         {
             "situacao": "Consolidação de Demanda",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -290,7 +290,7 @@
         {
             "situacao": "Sessão Pública",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -306,7 +306,7 @@
         {
             "situacao": "Consolidação de Demanda",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -329,7 +329,7 @@
         {
             "situacao": "Assinatura Contrato",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -345,7 +345,7 @@
         {
             "situacao": "Consolidação de Demanda",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -353,29 +353,29 @@
     "PE 90020/2024": [
         {
             "situacao": "Planejamento",
-            "data_inicial": "2024-11-24",
-            "data_final": "2024-11-24",
+            "data_inicial": "2024-10-29",
+            "data_final": "2024-10-29",
             "dias_na_etapa": 0,
             "comentario": ""
         },
         {
             "situacao": "Assinatura Contrato",
-            "data_inicial": "2024-11-24",
-            "data_final": "2024-11-24",
+            "data_inicial": "2024-10-08",
+            "data_final": "2024-10-08",
             "dias_na_etapa": 0,
             "comentario": ""
         },
         {
             "situacao": "Concluído",
-            "data_inicial": "2024-11-24",
+            "data_inicial": "2024-09-04",
             "data_final": "2024-11-25",
-            "dias_na_etapa": 1,
+            "dias_na_etapa": 82,
             "comentario": ""
         },
         {
             "situacao": "Sessão Pública",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -384,7 +384,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -407,7 +407,7 @@
         {
             "situacao": "Concluído",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -423,7 +423,7 @@
         {
             "situacao": "Consolidação de Demanda",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -432,7 +432,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -448,7 +448,7 @@
         {
             "situacao": "Consolidação de Demanda",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -457,7 +457,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -466,7 +466,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -475,7 +475,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -484,7 +484,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -493,7 +493,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -502,7 +502,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -511,7 +511,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -520,7 +520,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -529,7 +529,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -538,7 +538,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -547,7 +547,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -556,7 +556,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -565,7 +565,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -574,7 +574,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -583,7 +583,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -592,7 +592,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -601,7 +601,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -610,7 +610,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -619,7 +619,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -628,7 +628,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -637,7 +637,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -646,7 +646,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -655,7 +655,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -692,7 +692,7 @@
         {
             "situacao": "Atendimento da NT",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -729,7 +729,7 @@
         {
             "situacao": "Atendimento da NT",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -759,7 +759,7 @@
         {
             "situacao": "Atendimento da NT",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -789,7 +789,7 @@
         {
             "situacao": "Atendimento da NT",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -798,7 +798,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -828,7 +828,7 @@
         {
             "situacao": "Atendimento da NT",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -837,7 +837,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -874,7 +874,7 @@
         {
             "situacao": "Assinatura Contrato",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -883,7 +883,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -892,7 +892,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -901,7 +901,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -910,7 +910,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -919,7 +919,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -928,7 +928,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -937,7 +937,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-24",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 1,
             "comentario": ""
         }
@@ -981,7 +981,7 @@
         {
             "situacao": "Assinatura Contrato",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -990,7 +990,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -999,7 +999,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1008,7 +1008,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1017,7 +1017,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1026,7 +1026,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1035,7 +1035,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1044,7 +1044,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1053,7 +1053,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1062,7 +1062,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1071,7 +1071,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1080,7 +1080,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1089,7 +1089,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1098,7 +1098,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1107,7 +1107,7 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }
@@ -1116,7 +1116,70 @@
         {
             "situacao": "Planejamento",
             "data_inicial": "2024-11-25",
-            "data_final": "2024-11-25",
+            "data_final": "2024-11-26",
+            "dias_na_etapa": 0,
+            "comentario": ""
+        }
+    ],
+    "PE 90023/2026": [
+        {
+            "situacao": "Planejamento",
+            "data_inicial": "2024-11-26",
+            "data_final": "2024-11-26",
+            "dias_na_etapa": 0,
+            "comentario": ""
+        }
+    ],
+    "PE 25/2025": [
+        {
+            "situacao": "Planejamento",
+            "data_inicial": "2024-11-26",
+            "data_final": "2024-11-26",
+            "dias_na_etapa": 0,
+            "comentario": ""
+        }
+    ],
+    "PE 90048/2025": [
+        {
+            "situacao": "Planejamento",
+            "data_inicial": "2024-11-26",
+            "data_final": "2024-11-26",
+            "dias_na_etapa": 0,
+            "comentario": ""
+        }
+    ],
+    "PE 70/2025": [
+        {
+            "situacao": "Planejamento",
+            "data_inicial": "2024-11-26",
+            "data_final": "2024-11-26",
+            "dias_na_etapa": 0,
+            "comentario": ""
+        }
+    ],
+    "PE 90066/2026": [
+        {
+            "situacao": "Planejamento",
+            "data_inicial": "2024-11-26",
+            "data_final": "2024-11-26",
+            "dias_na_etapa": 0,
+            "comentario": ""
+        }
+    ],
+    "PE 90067/2027": [
+        {
+            "situacao": "Planejamento",
+            "data_inicial": "2024-11-26",
+            "data_final": "2024-11-26",
+            "dias_na_etapa": 0,
+            "comentario": ""
+        }
+    ],
+    "PE 9035/2027": [
+        {
+            "situacao": "Planejamento",
+            "data_inicial": "2024-11-26",
+            "data_final": "2024-11-26",
             "dias_na_etapa": 0,
             "comentario": ""
         }

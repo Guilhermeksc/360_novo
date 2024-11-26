@@ -8,6 +8,7 @@ from src.modules.dispensa_eletronica.dialogs.edit_data.apoio_data import COLUNAS
 from src.modules.dispensa_eletronica.dialogs.edit_data.widgets.formulario import TableCreationWorker
 from src.modules.planejamento.dialogs.checklist import ChecklistWidget
 from src.modules.planejamento.dialogs.edit_data.widgets.msg import MensagensManager
+from src.modules.planejamento.dialogs.edit_data.widgets.etapa import EtapasManager
 from src.modules.utils.linha_layout import linha_divisoria_layout, linha_divisoria_sem_spacer_layout
 from pathlib import Path
 from src.config.paths import CONTROLE_DADOS, CONTROLE_PRAZOS, LICITACAO_CONTROLE_JSON
@@ -72,7 +73,9 @@ class EditarDadosWindow(QMainWindow):
         self.carregar_referencias()
         verificar_criar_json(LICITACAO_CONTROLE_JSON)
         # Inicializa o gerenciador de mensagens
-        self.mensagens_manager = MensagensManager(self.icons, self.dados)     
+        self.mensagens_manager = MensagensManager(self.icons, self.dados)
+        self.etapas_manager = EtapasManager(CONTROLE_PRAZOS, self.icons)
+     
         self.setup_ui()
 
     def closeEvent(self, event):
@@ -348,10 +351,8 @@ class EditarDadosWindow(QMainWindow):
 
     def stacked_widget_envio_agu(self, data):
         frame = QFrame()
-        layout = QVBoxLayout()
-        label = QLabel("AGU")        
+        layout = QVBoxLayout()     
         checklist_widget = ChecklistWidget(parent=self, icons_path=self.icons, df_registro_selecionado=self.dados)
-        layout.addWidget(label)
         layout.addWidget(checklist_widget)
         frame.setLayout(layout)
         return frame
@@ -887,48 +888,53 @@ class EditarDadosWindow(QMainWindow):
         return frame
 
     def stacked_widget_etapas(self, data):
-        frame = QFrame()
-        layout = QVBoxLayout()
+        id_processo = data.get("id_processo")
+        return self.etapas_manager.criar_layout_etapas(id_processo)
 
-        label = QLabel("Etapas")
-        layout.addWidget(label)
 
-        # Carregar o arquivo CONTROLE_PRAZOS
-        try:
-            with open(CONTROLE_PRAZOS, 'r', encoding='utf-8') as f:
-                controle_prazos = json.load(f)
-        except Exception as e:
-            layout.addWidget(QLabel(f"Erro ao carregar CONTROLE_PRAZOS: {str(e)}"))
-            frame.setLayout(layout)
-            return frame
+    # def stacked_widget_etapas(self, data):
+    #     frame = QFrame()
+    #     layout = QVBoxLayout()
 
-        # Procurar o id_processo em controle_prazos
-        id_processo = data.get('id_processo', None)
-        if id_processo and id_processo in controle_prazos:
-            etapas = controle_prazos[id_processo]
+    #     label = QLabel("Etapas")
+    #     layout.addWidget(label)
 
-            # Exibir as etapas no layout
-            for etapa in etapas:
-                situacao = etapa.get("situacao", "N/A")
-                data_inicial = etapa.get("data_inicial", "N/A")
-                data_final = etapa.get("data_final", "N/A")
-                dias_na_etapa = etapa.get("dias_na_etapa", 0)
-                comentario = etapa.get("comentario", "")
+    #     # Carregar o arquivo CONTROLE_PRAZOS
+    #     try:
+    #         with open(CONTROLE_PRAZOS, 'r', encoding='utf-8') as f:
+    #             controle_prazos = json.load(f)
+    #     except Exception as e:
+    #         layout.addWidget(QLabel(f"Erro ao carregar CONTROLE_PRAZOS: {str(e)}"))
+    #         frame.setLayout(layout)
+    #         return frame
 
-                etapa_label = QLabel(
-                    f"Situação: {situacao}\n"
-                    f"Data Inicial: {data_inicial}\n"
-                    f"Data Final: {data_final}\n"
-                    f"Dias na Etapa: {dias_na_etapa}\n"
-                    f"Comentário: {comentario}"
-                )
-                etapa_label.setWordWrap(True)
-                layout.addWidget(etapa_label)
-        else:
-            layout.addWidget(QLabel("Nenhuma etapa encontrada para o processo."))
+    #     # Procurar o id_processo em controle_prazos
+    #     id_processo = data.get('id_processo', None)
+    #     if id_processo and id_processo in controle_prazos:
+    #         etapas = controle_prazos[id_processo]
 
-        frame.setLayout(layout)
-        return frame
+    #         # Exibir as etapas no layout
+    #         for etapa in etapas:
+    #             situacao = etapa.get("situacao", "N/A")
+    #             data_inicial = etapa.get("data_inicial", "N/A")
+    #             data_final = etapa.get("data_final", "N/A")
+    #             dias_na_etapa = etapa.get("dias_na_etapa", 0)
+    #             comentario = etapa.get("comentario", "")
+
+    #             etapa_label = QLabel(
+    #                 f"Situação: {situacao}\n"
+    #                 f"Data Inicial: {data_inicial}\n"
+    #                 f"Data Final: {data_final}\n"
+    #                 f"Dias na Etapa: {dias_na_etapa}\n"
+    #                 f"Comentário: {comentario}"
+    #             )
+    #             etapa_label.setWordWrap(True)
+    #             layout.addWidget(etapa_label)
+    #     else:
+    #         layout.addWidget(QLabel("Nenhuma etapa encontrada para o processo."))
+
+    #     frame.setLayout(layout)
+    #     return frame
     
     def stacked_widget_pncp(self, data):
         frame = QFrame()

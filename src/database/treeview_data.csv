@@ -1,20 +1,20 @@
 Nº,Identificação,Marcador,Início,Fim,Págs
-01,Portaria XXXX Com7°DN de Designação de Equipe de Planejamento,portaria_plan,1,4,4
-02,Estudo Técnico Preliminar (ETP),etp,5,32,28
-03,Despacho,despacho,33,34,2
-04,Minuta da Ata de Registro de Preços,minuta_arp,35,37,3
-05,Documento de Formalização da Demanda (DFD),dfd,38,47,10
-06,Matriz de Gerenciamento de Riscos,mr,48,58,11
-07,Minuta do Edital,minuta_edital,59,85,27
-08,Comunicação Padronizada,termo,86,87,2
-09,Minuta do Contrato,minuta_contrato,88,96,9
-10,Termo de Referência,tr,97,116,20
-11,Capa de Abertura do Pregão Eletrônico e Termo de Autuação,termo_autuacao,117,120,4
-12,Portaria XXXX de Designação de Militares para Comissão de Licitação,portaria_comissao,121,124,4
-13,Lista de Verificação,checklist,125,131,7
-14,Autorização para Abertura de Processo,termo_abertura,132,133,2
-15,Pesquisa de Preços,pesquisa_precos,134,136,3
-16,Comprovação da Divulgação da Intenção do Registro de Preços,termo_irp,137,138,2
-17,Nota Técnica,nota_tecnica,139,146,8
-18,Portaria XXXX de Designação de Ordenador de Despesas,portaria_od,147,149,3
-19,Despacho de Encaminhamento para AGU,termo,150,151,2
+01,Capa de Abertura do Pregão Eletrônico e Termo de Autuação,termo_autuacao,1,4,4
+02,Autorização para Abertura de Processo,termo_abertura,5,6,2
+03,Minuta do Contrato,minuta_contrato,7,15,9
+04,Portaria XXXX Com7°DN de Designação de Equipe de Planejamento,portaria_plan,16,19,4
+05,Lista de Verificação,checklist,20,26,7
+06,Estudo Técnico Preliminar (ETP),etp,27,54,28
+07,Despacho de Encaminhamento para AGU,termo,55,56,2
+08,Pesquisa de Preços,pesquisa_precos,57,59,3
+09,Minuta do Edital,minuta_edital,60,86,27
+10,Despacho,despacho,87,88,2
+11,Portaria XXXX de Designação de Militares para Comissão de Licitação,portaria_comissao,89,92,4
+12,Minuta da Ata de Registro de Preços,minuta_arp,93,95,3
+13,Termo de Referência,tr,96,115,20
+14,Documento de Formalização da Demanda (DFD),dfd,116,125,10
+15,Portaria XXXX de Designação de Ordenador de Despesas,portaria_od,126,128,3
+16,Matriz de Gerenciamento de Riscos,mr,129,139,11
+17,Comunicação Padronizada,termo,140,141,2
+18,Comprovação da Divulgação da Intenção do Registro de Preços,termo_irp,142,143,2
+19,Nota Técnica,nota_tecnica,144,151,8
