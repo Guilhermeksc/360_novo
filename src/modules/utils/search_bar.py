@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QLabel, QLineEdit
 from PyQt6.QtCore import QSortFilterProxyModel, Qt, QRegularExpression
+from datetime import datetime
 
 class MultiColumnFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
@@ -20,6 +21,61 @@ class MultiColumnFilterProxyModel(QSortFilterProxyModel):
                 if self.filter_regular_expression.match(data_str).hasMatch():
                     return True  # Mostra a linha se houver correspondência em qualquer coluna
         return False  # Oculta a linha se não houver correspondência em nenhuma coluna
+
+class ContratosMultiColumnFilterProxyModel(QSortFilterProxyModel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.filter_regular_expression = QRegularExpression()
+    
+    def setFilterRegularExpression(self, regex):
+        self.filter_regular_expression = regex
+        self.invalidateFilter()  # Revalida o filtro sempre que o regex é atualizado
+
+    def filterAcceptsRow(self, source_row, source_parent):
+        # Verifica o valor do filtro em cada coluna da linha
+        for column in range(self.sourceModel().columnCount()):
+            index = self.sourceModel().index(source_row, column, source_parent)
+            data = self.sourceModel().data(index, Qt.ItemDataRole.DisplayRole)
+            if data is not None:
+                data_str = str(data)
+                if self.filter_regular_expression.match(data_str).hasMatch():
+                    return True  # Mostra a linha se houver correspondência em qualquer coluna
+        return False  # Oculta a linha se não houver correspondência em nenhuma coluna
+
+    def lessThan(self, left, right):
+        """Sobrescreve a comparação padrão para a coluna `vigencia_final`."""
+        left_data = self.sourceModel().data(left, Qt.ItemDataRole.DisplayRole)
+        right_data = self.sourceModel().data(right, Qt.ItemDataRole.DisplayRole)
+
+        # Verifica se estamos na coluna `vigencia_final`
+        column = left.column()
+        if column == self.sourceModel().fieldIndex("vigencia_final"):
+            left_date = self._parse_date(left_data)
+            right_date = self._parse_date(right_data)
+
+            # Coloca valores inválidos ou NULL no final
+            if left_date is None and right_date is None:
+                return False
+            if left_date is None:
+                return False
+            if right_date is None:
+                return True
+
+            # Compara datas válidas em ordem DESCENDENTE
+            return left_date > right_date  # Note que invertemos o operador para ordem descendente
+
+        # Comparação padrão para outras colunas
+        return super().lessThan(left, right)
+
+    @staticmethod
+    def _parse_date(date_str):
+        """Tenta converter uma string de data no formato YYYY-MM-DD."""
+        if not date_str:
+            return None
+        try:
+            return datetime.strptime(date_str, "%Y-%m-%d")
+        except ValueError:
+            return None
 
 
 

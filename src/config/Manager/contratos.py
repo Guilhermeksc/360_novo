@@ -275,7 +275,7 @@ class ContratosManager(QWidget):
             QMessageBox.critical(self, "Erro", f"Erro ao salvar o arquivo JSON: {e}")
             
     def consolidar_arquivos_json(self):
-        """Consolida todos os arquivos JSON no diretório em um único arquivo."""
+        """Consolida todos os arquivos JSON no diretório em um único arquivo ordenado."""
         consolidado = []
         arquivos_json = [f for f in os.listdir(JSON_CONTRATOS_DIR) if f.endswith('.json')]
 
@@ -314,11 +314,26 @@ class ContratosManager(QWidget):
             except Exception as e:
                 print(f"Erro ao processar {arquivo}: {e}")
 
+        # Ordenar os registros de forma decrescente com base na vigencia_final
+        def parse_date(date):
+            try:
+                return pd.to_datetime(date, format='%Y-%m-%d', errors='coerce')
+            except Exception:
+                return None
+
+        registros_validos = sorted(
+            [c for c in consolidado if parse_date(c["vigencia_final"])],
+            key=lambda x: parse_date(x["vigencia_final"]),
+            reverse=True
+        )
+        registros_invalidos = [c for c in consolidado if not parse_date(c["vigencia_final"])]
+        consolidado_ordenado = registros_validos + registros_invalidos
+
         # Salvar o arquivo consolidado
         caminho_consolidado = os.path.join(JSON_DIR, "contratos_consolidados.json")
         try:
             with open(caminho_consolidado, 'w', encoding='utf-8') as f:
-                json.dump(consolidado, f, ensure_ascii=False, indent=4)
+                json.dump(consolidado_ordenado, f, ensure_ascii=False, indent=4)
             print(f"Arquivo consolidado salvo em {caminho_consolidado}")
         except Exception as e:
             print(f"Erro ao salvar o arquivo consolidado: {e}")
@@ -339,16 +354,16 @@ class ContratosManager(QWidget):
 
         for contrato in contratos:
             try:
-
                 prorrogavel = "Sim" if contrato.get("prorrogavel") == "Sim" else "Não"
                 custeio = ""
                 dias = ""
-                status = "Seção de Contratos"
+                
+                # Mantém o valor existente de 'status' se ele estiver presente
+                status = contrato.get("status", "")
 
                 contrato_info = {
                     "status": status,
                     "dias": dias,
-                    "id": contrato.get("id"),
                     "licitacao_numero": contrato.get("licitacao_numero"),
                     "contrato_numero": contrato.get("contrato_numero"),
                     "codigo_uasg": contrato.get("codigo_uasg", ""),
@@ -371,7 +386,8 @@ class ContratosManager(QWidget):
                     "data_publicacao": contrato.get("data_publicacao"),
                     "vigencia_inicial": contrato.get("vigencia_inicial"),
                     "vigencia_final": contrato.get("vigencia_final"),
-                    "valor_global": contrato.get("valor_global")
+                    "valor_global": contrato.get("valor_global"),
+                    "id": contrato.get("id"),
                 }
                 contratos_list.append(contrato_info)
 
@@ -382,7 +398,6 @@ class ContratosManager(QWidget):
         df = pd.DataFrame(contratos_list)
         # Salvar os dados no banco de dados SQLite
         salvar_dados_no_sqlite(df, DATA_CONTRATOS_PATH)
-
 
 class RequestThread(QThread):
     data_received = pyqtSignal(object)
@@ -404,7 +419,7 @@ class RequestThread(QThread):
             }
             response = requests.get(url, headers=headers)
 
-            print("Raw response content:", response.text)
+            # print("Raw response content:", response.text)
 
             response.raise_for_status()
             data = response.json()

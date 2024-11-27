@@ -8795,10 +8795,10 @@
             "vigencia_inicio": "2021-08-02",
             "vigencia_fim": "2025-08-01",
             "valor_inicial": "2.400.000,00",
-            "valor_global": "2.680.560,00",
+            "valor_global": "2.870.640,00",
             "num_parcelas": 1,
-            "valor_parcela": "2.680.560,00",
-            "valor_acumulado": "34.566.720,00",
+            "valor_parcela": "2.870.640,00",
+            "valor_acumulado": "36.277.440,00",
             "links": {
                 "historico": "https://contratos.comprasnet.gov.br/api/contrato/110211/historico",
                 "empenhos": "https://contratos.comprasnet.gov.br/api/contrato/110211/empenhos",

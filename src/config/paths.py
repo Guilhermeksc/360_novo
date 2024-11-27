@@ -21,9 +21,11 @@ CONTROLE_DADOS = DATABASE_DIR / "controle_dados.db"
 # Json Dir
 JSON_DIR = DATABASE_DIR / "json"
 JSON_CONTRATOS_DIR = JSON_DIR / "contratos"
+CONTRATOS_JSON = JSON_CONTRATOS_DIR / "contratos.json"
 
 MSG_LICITACAO_JSON = BASE_DIR / "msg_licitacao.json"
 LICITACAO_CONTROLE_JSON = BASE_DIR / "licitacao.json"
+
 CONTROLE_PRAZOS = BASE_DIR / "controle_status.json"
 CONFIG_FILE = BASE_DIR / "config.json"
 PRE_DEFINICOES_JSON = BASE_DIR / "pre_definicioes.json"

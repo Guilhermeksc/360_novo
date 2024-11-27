@@ -1,18 +1,59 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
-from src.modules.utils.search_bar import setup_search_bar, MultiColumnFilterProxyModel
+from src.modules.utils.search_bar import setup_search_bar, ContratosMultiColumnFilterProxyModel
 from src.modules.utils.add_button import add_button, add_button_func
 import pandas as pd
 
+class StatusContextMenu(QMenu):
+    status_changed = pyqtSignal(dict)  # Sinal para notificar a mudança de status
+
+    def __init__(self, parent, model):
+        super().__init__(parent)
+        self.model = model
+        self.init_menu()
+
+    def init_menu(self):
+        """Inicializa o menu de contexto com as opções fornecidas."""
+        options = [
+            "Prioritário",
+            "Pegou!",
+            "Tá Safo!",
+            "Enviada",
+            "Processo na AGU",
+            "Nota Técnica",
+            "Assinatura",
+            "Reajuste",
+        ]
+        for option in options:
+            action = QAction(option, self)
+            action.triggered.connect(lambda checked, opt=option: self.emit_status_change(opt))
+            self.addAction(action)
+
+    def emit_status_change(self, status):
+        """Emite um sinal com os dados da linha selecionada e o novo status."""
+        table_view = self.parent().table_view
+        selected_index = table_view.selectionModel().currentIndex()
+        if not selected_index.isValid():
+            QMessageBox.warning(self.parent(), "Seleção inválida", "Selecione uma linha para alterar o status.")
+            return
+
+        # Mapeia para o modelo original e obtém a linha
+        source_index = table_view.model().mapToSource(selected_index)
+        row = source_index.row()
+
+        # Coleta os dados da linha selecionada
+        row_data = {self.model.headerData(i, Qt.Orientation.Horizontal): self.model.index(row, i).data()
+                    for i in range(self.model.columnCount())}
+        row_data['status'] = status  # Define o novo status
+
+        self.status_changed.emit(row_data)  # Emite o sinal com os dados da linha e o novo status
+
 class ContratosView(QMainWindow):
     # Sinais para comunicação com o controlador
-    dataManager = pyqtSignal()
-    pauloVitor = pyqtSignal()
-    loadData = pyqtSignal(str)
     rowDoubleClicked = pyqtSignal(dict)
-    request_consulta_api = pyqtSignal(str, str, str, str, str)
-    
+    alterar_status = pyqtSignal(dict)
+
     def __init__(self, icons, model, database_path, parent=None):
         super().__init__(parent)
         self.icons = icons
@@ -21,12 +62,29 @@ class ContratosView(QMainWindow):
         self.selected_row_data = None
         
         # Inicializa o proxy_model e configura o filtro
-        self.proxy_model = MultiColumnFilterProxyModel(self)
+        self.proxy_model = ContratosMultiColumnFilterProxyModel(self)
         self.proxy_model.setSourceModel(self.model)
         self.proxy_model.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
         # Configura a interface de usuário
         self.setup_ui()
+        self.init_context_menu()
+
+    def init_context_menu(self):
+        """Inicializa o menu de contexto."""
+        self.context_menu = StatusContextMenu(self, self.model)
+        self.context_menu.status_changed.connect(self.handle_status_change)
+        self.table_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.table_view.customContextMenuRequested.connect(self.show_context_menu)
+
+    def show_context_menu(self, pos):
+        """Exibe o menu de contexto na posição do clique."""
+        global_pos = self.table_view.viewport().mapToGlobal(pos)
+        self.context_menu.exec(global_pos)
+
+    def handle_status_change(self, data):
+        """Repassa o sinal para o controlador."""
+        self.alterar_status.emit(data)
 
     def setup_ui(self):
         # Cria o widget principal e layout principal
@@ -53,7 +111,7 @@ class ContratosView(QMainWindow):
         
     def on_table_double_click(self, index):
         row = self.proxy_model.mapToSource(index).row()
-        id_processo = self.model.index(row, self.model.fieldIndex("id_processo")).data()
+        id_processo = self.model.index(row, self.model.fieldIndex("id")).data()
 
         # Carrega os dados e redefine `selected_row_data` a cada clique duplo
         self.selected_row_data = self.carregar_dados_por_id(id_processo)
@@ -66,10 +124,10 @@ class ContratosView(QMainWindow):
 
     def carregar_dados_por_id(self, id_processo):
         """Carrega os dados da linha selecionada a partir do banco de dados usando `id_processo`."""
-        query = f"SELECT * FROM controle_contratos WHERE id_processo = '{id_processo}'"
+        query = f"SELECT * FROM controle_contratos WHERE id = '{id_processo}'"
         try:
             # Obtenha os dados do banco de dados
-            dados = self.model.database_licitacao_manager.fetch_all(query)
+            dados = self.model.database_contratos_manager.fetch_all(query)
             
             # Converte para DataFrame caso dados seja uma lista
             if isinstance(dados, list):
@@ -82,12 +140,8 @@ class ContratosView(QMainWindow):
             return None
         
     def setup_buttons(self, layout):
-        add_button("Mensagem", "mensagem", self.pauloVitor, layout, self.icons, tooltip="Teste paulo vitor" )
-        add_button("Comunicação Padronizada", "mensagem", self.pauloVitor, layout, self.icons, tooltip="Teste paulo vitor" )
-        add_button("Abrir Tabela", "excel", self.pauloVitor, layout, self.icons, tooltip="Adicionar um novo item")
-        add_button("Controle Vigência", "time", self.pauloVitor, layout, self.icons, tooltip="Adicionar um novo item")
-        # add_button("Excluir", "delete", self.deleteItem, layout, self.icons, tooltip="Excluir o item selecionado")
-        # add_button("Database", "data-server", self.dataManager, layout, self.icons, tooltip="Salva o dataframe em um arquivo Excel")
+        add_button("Abrir Tabela", "excel", self.rowDoubleClicked, layout, self.icons, tooltip="Adicionar um novo item")
+        add_button("Controle Vigência", "time", self.rowDoubleClicked, layout, self.icons, tooltip="Adicionar um novo item")
 
     def refresh_model(self):
         """Atualiza a tabela com os dados mais recentes do banco de dados."""
@@ -98,14 +152,16 @@ class ContratosView(QMainWindow):
         self.table_view.setModel(self.proxy_model)  # Usa o proxy_model corretamente
         self.table_view.verticalHeader().setVisible(False)
         self.table_view.doubleClicked.connect(self.on_table_double_click)
-        
+
+        # Ativa a ordenação na tabela
+        self.table_view.setSortingEnabled(True)
+
+        # Define a ordenação inicial pela coluna `vigencia_final` em ordem DESCENDENTE
+        self.table_view.sortByColumn(self.model.fieldIndex("vigencia_final"), Qt.SortOrder.AscendingOrder)
+
         # Configuração do comportamento de seleção
         self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self.table_view.setSelectionMode(QTableView.SelectionMode.SingleSelection)
-
-        # Aplica o ColorDelegate na coluna 'prorrogável' (índice 2)
-        self.table_view.setItemDelegateForColumn(2, ColorDelegate(self.table_view))
-        self.table_view.setItemDelegateForColumn(1, ColorDelegate(self.table_view))
 
         self.table_view.setStyleSheet("""
             QTableView {
@@ -123,7 +179,7 @@ class ContratosView(QMainWindow):
             self.table_view.setItemDelegateForColumn(column, center_delegate)
 
         # Aplica CustomItemDelegate à coluna "situação" para exibir ícones
-        situacao_index = self.model.fieldIndex('Status')
+        situacao_index = self.model.fieldIndex('status')
         self.table_view.setItemDelegateForColumn(situacao_index, CustomItemDelegate(self.icons, self.table_view, self.model))
 
         self.main_layout.addWidget(self.table_view)
@@ -134,7 +190,7 @@ class ContratosView(QMainWindow):
         self.hide_unwanted_columns()
 
     def update_column_headers(self):
-        titles = {0: "Status", 1: "Dias", 2: "Renova?", 3: "Sigla", 4: "Contrato/Ata", 5: "Tipo", 6: "Processo", 7: "Fornecedor", 9: "Valor"}
+        titles = {0: "Alerta", 1: "Dias", 2: "Renova?", 3: "UASG", 4: "Contrato/Ata", 5: "Tipo", 6: "Processo", 7: "Fornecedor", 9: "Valor"}
         for column, title in titles.items():
             self.model.setHeaderData(column, Qt.Orientation.Horizontal, title)
 
@@ -161,63 +217,19 @@ class ContratosView(QMainWindow):
         header.setSectionResizeMode(7, QHeaderView.ResizeMode.Stretch) # Fornecedor
         header.setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed) # Valor
 
-        header.resizeSection(0, 140)        
+        header.resizeSection(0, 120)        
         header.resizeSection(1, 65)
         header.resizeSection(2, 60)
-        header.resizeSection(3, 80)
+        header.resizeSection(3, 70)
         header.resizeSection(4, 100)
-        header.resizeSection(5, 100)
-        header.resizeSection(6, 80)
-        header.resizeSection(9, 120)
+        header.resizeSection(5, 130)
+        header.resizeSection(6, 100)
+        header.resizeSection(9, 110)
 
 class CenterAlignDelegate(QStyledItemDelegate):
     def initStyleOption(self, option, index):
         super().initStyleOption(option, index)
         option.displayAlignment = Qt.AlignmentFlag.AlignCenter
-
-class ColorDelegate(QStyledItemDelegate):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def paint(self, painter, option, index):
-        value = index.data(Qt.ItemDataRole.DisplayRole)
-
-        # Configura o estilo para as colunas específicas
-        painter.save()
-        if index.column() == 2:  # Coluna 'prorrogável'
-            if value == "Sim":
-                painter.fillRect(option.rect, QColor("lightgreen"))
-                painter.setPen(QColor("lightgreen"))
-            elif value == "Não":
-                painter.fillRect(option.rect, QColor("lightcoral"))
-                painter.setPen(QColor("lightcoral"))
-            else:
-                painter.setPen(option.palette.color(QPalette.ColorRole.Text))
-
-        elif index.column() == 1:  # Coluna 'dias'
-            if value is not None and isinstance(value, int):
-                # Define a cor com base no valor de dias
-                if value < 30:
-                    color = QColor(255, 0, 0)  # Vermelho
-                elif 30 <= value <= 90:
-                    color = QColor(255, 165, 0)  # Laranja
-                elif 91 <= value <= 159:
-                    color = QColor(255, 255, 0)  # Amarelo
-                else:
-                    color = QColor(0, 255, 0)  # Verde
-                
-                # Cria um degradê com tons suaves
-                gradient = QLinearGradient(option.rect.topLeft(), option.rect.bottomRight())
-                gradient.setColorAt(0, QColor(255, 255, 255))  # Branco
-                gradient.setColorAt(1, color)
-                painter.fillRect(option.rect, gradient)
-
-                painter.setPen(option.palette.color(QPalette.ColorRole.Text))
-
-        # Desenha o texto
-        painter.drawText(option.rect, Qt.AlignmentFlag.AlignCenter, str(value) if value is not None else "")
-        painter.restore()
-
 
 class CustomItemDelegate(QStyledItemDelegate):
     def __init__(self, icons, parent=None, model=None):
@@ -232,20 +244,26 @@ class CustomItemDelegate(QStyledItemDelegate):
             
             # Define o mapeamento de ícones
             icon_key = {
-                'Seção de Contratos': 'business',
-                'Aprovado': 'check-circle',
-                'Pendente': 'alert-circle',
-                'Concluído': 'check',
+                'Assinatura': 'assinatura',
+                'Reajuste': 'economy',
+                'Prioritário': 'prioridade',
+                'Enviada': 'delivered',
+                'Tá Safo!': 'like',
+                'Pegou!': 'head_skull',
+                'Nota Técnica': 'deal',
             }.get(status)
 
-            # Configura cor do texto com base no status
-            color_map = {
-                'Seção de Contratos': QColor("green"),
-                'Pendente': QColor("orange"),
-                'Concluído': QColor("blue"),
-                'Rejeitado': QColor("red"),
-            }
-            text_color = color_map.get(status, option.palette.color(QPalette.ColorRole.Text))
+            # # Configura cor do texto com base no status
+            # color_map = {
+            #     'Assinatura': QColor("white"),
+            #     'Reajuste': QColor("white"),
+            #     'Seção de Contratos': QColor("white"),
+            #     'Prioritário': QColor("white"),
+            #     'Mensagem Enviada': QColor("white"),
+            #     'Pegou!': QColor("white"),
+            #     'Tá Safo!': QColor("white"),
+            # }
+            # text_color = color_map.get(status, option.palette.color(QPalette.ColorRole.Text))
 
             # Desenha o ícone, se disponível
             if icon_key and icon_key in self.icons:
@@ -264,7 +282,7 @@ class CustomItemDelegate(QStyledItemDelegate):
                 text_rect = option.rect
 
             # Configura o pincel para o texto
-            painter.setPen(text_color)
+            # painter.setPen(text_color)
             painter.drawText(text_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, status)
 
         else:

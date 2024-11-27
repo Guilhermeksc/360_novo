@@ -26,6 +26,11 @@ def load_icon(icon_name):
 def load_icons():
     return {
         "priority": load_icon("priority.png"),
+        "head_skull": load_icon("head_skull.png"),
+        "like": load_icon("like.png"),
+        "assinatura": load_icon("assinatura.png"),
+        "reajuste": load_icon("reajuste.png"),
+        "delivered": load_icon("delivered.png"),
         "json": load_icon("json.png"),
         "rotate": load_icon("rotate.png"),
         "reckoning": load_icon("reckoning.png"),
