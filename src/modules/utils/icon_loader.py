@@ -26,6 +26,7 @@ def load_icon(icon_name):
 def load_icons():
     return {
         "priority": load_icon("priority.png"),
+        "json": load_icon("json.png"),
         "rotate": load_icon("rotate.png"),
         "reckoning": load_icon("reckoning.png"),
         "synchronize": load_icon("synchronize.png"),

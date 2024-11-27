@@ -199,6 +199,7 @@ class SqlModel:
             self.create_table_if_not_exists()
         else:
             print("Tabela 'controle_contratos' existe. Verificando estrutura da coluna...")
+            
     def create_table_if_not_exists(self):
         query = QSqlQuery(self.db)
         if not query.exec("""

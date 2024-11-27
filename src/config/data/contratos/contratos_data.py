@@ -228,66 +228,7 @@ class GerenciarInclusaoExclusaoContratos(QDialog):
 
         # Chamando a função para salvar no banco de dados SQLite
         self.salvar_dados_no_sqlite(df)
-        
-    def salvar_dados_no_sqlite(self, df):
-        """Salva o DataFrame no banco de dados SQLite, atualizando registros existentes e inserindo novos registros."""
-        try:
-            with sqlite3.connect(CONTROLE_CONTRATOS_DADOS) as conn:
-                cursor = conn.cursor()
-                
-                # Certificando-se de que a coluna 'id' é uma PRIMARY KEY ou tem índice UNIQUE
-                cursor.execute("PRAGMA table_info(controle_contratos);")
-                columns_info = cursor.fetchall()
-                id_column_info = next((col for col in columns_info if col[1] == 'id'), None)
-
-                if id_column_info is None or id_column_info[5] != 1:  # Verificando se 'id' é PRIMARY KEY
-                    QMessageBox.critical(self, "Erro", "A tabela 'controle_contratos' não possui 'id' como PRIMARY KEY.")
-                    return
-
-                # Definindo as colunas necessárias para inserir ou atualizar
-                columns = [
-                    'id', 'status', 'id_processo', 'numero', 'codigo', 'nome_resumido', 'nome', 
-                    'cnpj_cpf_idgener', 'nome_fornecedor', 'tipo', 'subtipo', 'prorrogavel', 
-                    'custeio', 'situacao', 'categoria', 'processo', 'objeto', 'amparo_legal', 
-                    'modalidade', 'licitacao_numero', 'data_assinatura', 'data_publicacao', 
-                    'vigencia_inicial', 'vigencia_final', 'valor_global'
-                ]
-
-                for _, row in df.iterrows():
-                    # Converter a linha em uma tupla com apenas as colunas necessárias
-                    row_data = tuple(row[col] for col in columns)
-                    
-                    # Verificar se o registro já existe
-                    cursor.execute("SELECT COUNT(1) FROM controle_contratos WHERE id = ?", (row['id'],))
-                    exists = cursor.fetchone()[0] > 0
-                    
-                    if exists:
-                        # Se o registro existir, execute UPDATE
-                        update_query = """
-                        UPDATE controle_contratos SET
-                            status = ?, id_processo = ?, numero = ?, codigo = ?, nome_resumido = ?, nome = ?, 
-                            cnpj_cpf_idgener = ?, nome_fornecedor = ?, tipo = ?, subtipo = ?, prorrogavel = ?, 
-                            custeio = ?, situacao = ?, categoria = ?, processo = ?, objeto = ?, amparo_legal = ?, 
-                            modalidade = ?, licitacao_numero = ?, data_assinatura = ?, data_publicacao = ?, 
-                            vigencia_inicial = ?, vigencia_final = ?, valor_global = ?
-                        WHERE id = ?;
-                        """
-                        cursor.execute(update_query, row_data[1:] + (row['id'],))
-                    else:
-                        # Se o registro não existir, execute INSERT
-                        insert_query = """
-                        INSERT INTO controle_contratos (id, status, id_processo, numero, codigo, nome_resumido, nome, 
-                            cnpj_cpf_idgener, nome_fornecedor, tipo, subtipo, prorrogavel, custeio, situacao, categoria, 
-                            processo, objeto, amparo_legal, modalidade, licitacao_numero, data_assinatura, data_publicacao, 
-                            vigencia_inicial, vigencia_final, valor_global)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-                        """
-                        cursor.execute(insert_query, row_data)
-                
-                conn.commit()
-                # QMessageBox.information(self, "Sucesso", "Dados salvos no banco de dados com sucesso!")
-        except Exception as e:
-            QMessageBox.critical(self, "Erro", f"Erro ao salvar no banco de dados: {e}")
+ 
 
     def hide_unwanted_columns(self):
         # Função para ocultar colunas não desejadas

@@ -14,9 +14,13 @@ TREEVIEW_DATA_PATH =  DATABASE_DIR / "treeview_data.csv"
 DATA_ATAS_PATH = DATABASE_DIR / "controle_atas.db"
 DATA_LICITACAO_PATH = DATABASE_DIR / "controle_licitacao.db"
 DATA_DISPENSA_ELETRONICA_PATH = DATABASE_DIR / "controle_contratacao_direta.db"
-DATA_CONTRATOS_PATH = DATABASE_DIR / "controle_contrato.db"
+DATA_CONTRATOS_PATH = DATABASE_DIR / "controle_contratos.db"
 CONTROLE_ASS_CONTRATOS_DADOS = DATABASE_DIR / "controle_assinatura.db"
 CONTROLE_DADOS = DATABASE_DIR / "controle_dados.db"
+
+# Json Dir
+JSON_DIR = DATABASE_DIR / "json"
+JSON_CONTRATOS_DIR = JSON_DIR / "contratos"
 
 MSG_LICITACAO_JSON = BASE_DIR / "msg_licitacao.json"
 LICITACAO_CONTROLE_JSON = BASE_DIR / "licitacao.json"
@@ -52,7 +56,6 @@ ATAS_DIR = MODULES_DIR / "atas_novo"
 PDF_DIR = ATAS_DIR / "termo_homologacao"
 
 CONTRATOS_DIR = MODULES_DIR / "contratos"
-JSON_CONTRATOS_DIR = CONTRATOS_DIR / "json"
 
 HOME_PATH = BASE_DIR / "main.py"
 CONTROLE_ATAS_DIR = DATABASE_DIR / "Atas"

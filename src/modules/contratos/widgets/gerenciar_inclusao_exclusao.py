@@ -1,18 +1,13 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
-from modules.contratos.utils import WidgetHelper, Dialogs
-from diretorios import *
-from datetime import datetime
-import tempfile
 import pandas as pd
 import sqlite3
 from contextlib import contextmanager
 import os
-import logging
-from modules.contratos.database_manager import DatabaseContratosManager, SqlModel
+import json
 import requests
-from src.config.paths import *
+from src.config.paths import BASE_DIR, DATA_CONTRATOS_PATH
 
 class RequestThread(QThread):
     data_received = pyqtSignal(object)
@@ -53,14 +48,13 @@ class RequestThread(QThread):
             self.error_occurred.emit(error_message)
 
 class GerenciarInclusaoExclusaoContratos(QDialog):
-    def __init__(self, icons_dir, database_path, required_columns, parent=None):
+    def __init__(self, icons_dir, model, required_columns, parent=None):
         super().__init__(parent)
         self.icons_dir = icons_dir
-        self.database_path = database_path
+        self.model = model
         self.required_columns = required_columns
         self.setWindowTitle("Sincronizar Contratos")
         self.setFixedSize(400, 300)  # Define o tamanho fixo da janela
-        self.database_manager = DatabaseContratosManager(self.database_path)
         self.init_ui()
 
     def init_ui(self):
@@ -107,13 +101,13 @@ class GerenciarInclusaoExclusaoContratos(QDialog):
         self.unidade_codigo_input.setPlaceholderText("Digite o código da unidade (6 dígitos)")
         unidade_layout.addWidget(self.unidade_codigo_input)
 
-        self.layout.addLayout(unidade_layout)  # Adiciona o layout horizontal ao layout principal
 
-        # Botão para baixar JSON
+
         self.baixar_json_button = QPushButton("Sincronizar", self)
         self.baixar_json_button.clicked.connect(self.baixar_json)
-        self.layout.addWidget(self.baixar_json_button)
+        unidade_layout.addWidget(self.baixar_json_button)
 
+        self.layout.addLayout(unidade_layout)  # Adiciona o layout horizontal ao layout principal
         # Adicionando os botões existentes
         self.layout.addLayout(self.create_button_layout())
 
@@ -164,24 +158,21 @@ class GerenciarInclusaoExclusaoContratos(QDialog):
     def processar_dados_para_tabela(self, data):
         """Processa os dados JSON para criar uma tabela e salva em um banco de dados SQLite."""
         contratos_list = []
-        for contrato in data["data"]:
+        for contrato in json ...:
             prorrogavel = "Sim" if contrato.get("prorrogavel") == "Sim" else "Não"
-            custeio = "Sim" if contrato.get("custeio") == "Sim" else "Não"
-            status = contrato.get('status') if contrato.get('status') is not None else "Seção de Contratos"
+            custeio = ""
+            dias = ""
+            status = "Seção de Contratos"
             
-            # Definir "2040-01-01" como padrão se 'vigencia_fim' for None ou não existir
-            vigencia_final = contrato.get("vigencia_fim")
-            if not vigencia_final or pd.isna(vigencia_final):
-                vigencia_final = "2016-01-01"
-
             contrato_info = {
-                'status': status,  # Campos conforme necessário
+                "status": status,
+                "dias": dias,
                 "id": contrato.get("id"),
-                "id_processo": contrato.get("licitacao_numero"),
-                "numero": contrato.get("numero"),
-                "codigo": contrato["contratante"]["orgao"]["unidade_gestora"].get("codigo"),
-                "nome_resumido": contrato["contratante"]["orgao"]["unidade_gestora"].get("nome_resumido"),
-                "nome": contrato["contratante"]["orgao"]["unidade_gestora"].get("nome"),
+                "licitacao_numero": contrato.get("licitacao_numero"),
+                "contrato_numero": contrato.get("numero"),
+                "codigo_uasg": contrato["contratante"]["orgao"]["unidade_gestora"].get("codigo"),
+                "sigla_om": contrato["contratante"]["orgao"]["unidade_gestora"].get("nome_resumido"),
+                "nome_om": contrato["contratante"]["orgao"]["unidade_gestora"].get("nome"),
                 "cnpj_cpf_idgener": contrato["fornecedor"].get("cnpj_cpf_idgener"),
                 "nome_fornecedor": contrato["fornecedor"].get("nome"),
                 "tipo": contrato.get("tipo"),
@@ -198,7 +189,7 @@ class GerenciarInclusaoExclusaoContratos(QDialog):
                 "data_assinatura": contrato.get("data_assinatura"),
                 "data_publicacao": contrato.get("data_publicacao"),
                 "vigencia_inicial": contrato.get("vigencia_inicio"),
-                "vigencia_final": vigencia_final,  # Utilize o valor padrão aqui
+                "vigencia_final": contrato.get("vigencia_final"),
                 "valor_global": contrato.get("valor_global")
             }
             contratos_list.append(contrato_info)
@@ -209,85 +200,8 @@ class GerenciarInclusaoExclusaoContratos(QDialog):
             if column not in df.columns:
                 df[column] = None 
 
-        # Reordenando as colunas de acordo com 'required_columns'
-        df = df[self.required_columns]
-
-        # excel_path = os.path.join(BASE_DIR, "contratos.xlsx")
-        # df.to_excel(excel_path, index=False)
-
-        # os.startfile(excel_path)  # Abre o arquivo Excel ao final
-        # Convertendo 'vigencia_final' para datetime para ordenação
-        df['vigencia_final'] = pd.to_datetime(df['vigencia_final'], format='%Y-%m-%d', errors='coerce')
-        
-        # Ordenando por 'vigencia_final' de forma decrescente
-        df = df.sort_values(by='vigencia_final', ascending=False)
-
-        # Convertendo 'vigencia_final' de volta para string antes de salvar
-        df['vigencia_final'] = df['vigencia_final'].dt.strftime('%Y-%m-%d')
-
-        # Chamando a função para salvar no banco de dados SQLite
         self.salvar_dados_no_sqlite(df)
         
-    def salvar_dados_no_sqlite(self, df):
-        """Salva o DataFrame no banco de dados SQLite, atualizando registros existentes e inserindo novos registros."""
-        try:
-            with sqlite3.connect(CONTROLE_CONTRATOS_DADOS) as conn:
-                cursor = conn.cursor()
-                
-                # Certificando-se de que a coluna 'id' é uma PRIMARY KEY ou tem índice UNIQUE
-                cursor.execute("PRAGMA table_info(controle_contratos);")
-                columns_info = cursor.fetchall()
-                id_column_info = next((col for col in columns_info if col[1] == 'id'), None)
-
-                if id_column_info is None or id_column_info[5] != 1:  # Verificando se 'id' é PRIMARY KEY
-                    QMessageBox.critical(self, "Erro", "A tabela 'controle_contratos' não possui 'id' como PRIMARY KEY.")
-                    return
-
-                # Definindo as colunas necessárias para inserir ou atualizar
-                columns = [
-                    'id', 'status', 'id_processo', 'numero', 'codigo', 'nome_resumido', 'nome', 
-                    'cnpj_cpf_idgener', 'nome_fornecedor', 'tipo', 'subtipo', 'prorrogavel', 
-                    'custeio', 'situacao', 'categoria', 'processo', 'objeto', 'amparo_legal', 
-                    'modalidade', 'licitacao_numero', 'data_assinatura', 'data_publicacao', 
-                    'vigencia_inicial', 'vigencia_final', 'valor_global'
-                ]
-
-                for _, row in df.iterrows():
-                    # Converter a linha em uma tupla com apenas as colunas necessárias
-                    row_data = tuple(row[col] for col in columns)
-                    
-                    # Verificar se o registro já existe
-                    cursor.execute("SELECT COUNT(1) FROM controle_contratos WHERE id = ?", (row['id'],))
-                    exists = cursor.fetchone()[0] > 0
-                    
-                    if exists:
-                        # Se o registro existir, execute UPDATE
-                        update_query = """
-                        UPDATE controle_contratos SET
-                            status = ?, id_processo = ?, numero = ?, codigo = ?, nome_resumido = ?, nome = ?, 
-                            cnpj_cpf_idgener = ?, nome_fornecedor = ?, tipo = ?, subtipo = ?, prorrogavel = ?, 
-                            custeio = ?, situacao = ?, categoria = ?, processo = ?, objeto = ?, amparo_legal = ?, 
-                            modalidade = ?, licitacao_numero = ?, data_assinatura = ?, data_publicacao = ?, 
-                            vigencia_inicial = ?, vigencia_final = ?, valor_global = ?
-                        WHERE id = ?;
-                        """
-                        cursor.execute(update_query, row_data[1:] + (row['id'],))
-                    else:
-                        # Se o registro não existir, execute INSERT
-                        insert_query = """
-                        INSERT INTO controle_contratos (id, status, id_processo, numero, codigo, nome_resumido, nome, 
-                            cnpj_cpf_idgener, nome_fornecedor, tipo, subtipo, prorrogavel, custeio, situacao, categoria, 
-                            processo, objeto, amparo_legal, modalidade, licitacao_numero, data_assinatura, data_publicacao, 
-                            vigencia_inicial, vigencia_final, valor_global)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-                        """
-                        cursor.execute(insert_query, row_data)
-                
-                conn.commit()
-                # QMessageBox.information(self, "Sucesso", "Dados salvos no banco de dados com sucesso!")
-        except Exception as e:
-            QMessageBox.critical(self, "Erro", f"Erro ao salvar no banco de dados: {e}")
-
     def hide_unwanted_columns(self):
         # Função para ocultar colunas não desejadas
         for column in range(self.parent().model.columnCount()):

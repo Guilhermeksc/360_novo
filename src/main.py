@@ -234,19 +234,38 @@ class MainWindow(QMainWindow):
     def show_contratos(self):
         self.clear_content_area()
         
-        # Instancia o modelo de Dispensa Eletrônica com o caminho do banco de dados
-        self.contratos_model = ContratosModel(DATA_CONTRATOS_PATH)
+        # Instancia o modelo de Contratos com o caminho do banco de dados
+        try:
+            self.contratos_model = ContratosModel(DATA_CONTRATOS_PATH)
+            print("ContratosModel criado com sucesso.")
+        except Exception as e:
+            print(f"Erro ao criar ContratosModel: {e}")
+            return
         
         # Configura o modelo SQL
-        sql_model = self.contratos_model.setup_model("controle_licitacao", editable=True)
+        try:
+            sql_model = self.contratos_model.setup_model("controle_contratos", editable=True)
+            print("Modelo SQL configurado com sucesso.")
+        except Exception as e:
+            print(f"Erro ao configurar o modelo SQL: {e}")
+            return
         
         # Cria o widget de Dispensa Eletrônica e passa o modelo SQL e o caminho do banco de dados
-        self.contratos_widget = ContratosView(self.icons, sql_model, self.contratos_model.database_contratos_manager.db_path)
+        try:
+            self.contratos_widget = ContratosView(self.icons, sql_model, self.contratos_model.database_contratos_manager.db_path)
+            print("ContratosView criado com sucesso.")
+        except Exception as e:
+            print(f"Erro ao criar ContratosView: {e}")
+            return
 
         # Cria o controlador e passa o widget e o modelo
-        self.contratos_controller = ContratosController(self.icons, self.contratos_widget, self.contratos_model)
+        try:
+            self.contratos_controller = ContratosController(self.icons, self.contratos_widget, self.contratos_model)
+            print("ContratosController criado com sucesso.")
+        except Exception as e:
+            print(f"Erro ao criar ContratosController: {e}")
+            return
 
-        # Adiciona o widget de Dispensa Eletrônica na área de conteúdo
         self.content_layout.addWidget(self.contratos_widget)
         self.set_active_button(self.buttons["contract"])
 

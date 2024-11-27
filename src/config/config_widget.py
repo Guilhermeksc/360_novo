@@ -5,6 +5,7 @@ from src.modules.utils.add_button import add_button_func
 from src.modules.utils.linha_layout import linha_divisoria_sem_spacer_layout
 from src.config.edit_agentes_responsaveis import EditPredefinicoesDialog
 from src.config.edit_organizacoes import EditOMDialog
+from src.config.Manager.contratos import ContratosManager
 from src.config.paths import AGENTES_RESPONSAVEIS_FILE, ORGANIZACOES_FILE
 import json
 from functools import partial
@@ -15,6 +16,7 @@ class ConfigManager(QWidget):
         self.icons = icons
         self.setup_ui()
         self.current_content_layout = None
+        # self.contratos_manager = ContratosManager(self.icons, dados={})
 
     def setup_ui(self):
         """Configura o layout de configuração com um menu lateral."""
@@ -48,7 +50,7 @@ class ConfigManager(QWidget):
             ("Agentes Responsáveis", self.show_agentes_responsaveis_widget),
             ("Organizações Militares", self.show_organizacoes_widget),
             ("Setores Requisitantes", self.show_setores_requisitantes_widget),
-            ("Database", self.show_gerenciar_inclusao_exclusao_contratos_widget),
+            ("Database", self.gerenciar_inclusao_exclusao_contratos_widget),
         ]
 
         self.config_menu_buttons = []
@@ -323,23 +325,12 @@ class ConfigManager(QWidget):
         layout.addStretch()
         self.content_layout.addLayout(layout)
 
-    def show_gerenciar_inclusao_exclusao_contratos_widget(self):
+    def gerenciar_inclusao_exclusao_contratos_widget(self):
+        """Gere e exibe o widget ContratosManager dinamicamente."""
         self.clear_content()
-        layout = QVBoxLayout()
-        title = QLabel("Alteração dos Dados")
-        title.setStyleSheet("font-size: 18px; color: white;")
-        layout.addWidget(title)
-
-        contratos = ["Dispensa Eletrônica", "Contratos", "Licitação", "Atas"]
-        for contrato in contratos:
-            row_layout = QHBoxLayout()
-            label = QLabel(contrato)
-            label.setStyleSheet("font-size: 14px; color: white;")
-            button = QPushButton("Editar")
-            row_layout.addWidget(label)
-            row_layout.addWidget(button)
-            layout.addLayout(row_layout)
-
-        # Adiciona o espaçador para empurrar o conteúdo para cima
-        layout.addStretch()
-        self.content_layout.addLayout(layout)
+        
+        # Recria o ContratosManager se ele não existir ou foi deletado
+        self.contratos_manager = ContratosManager(self.icons, dados={})
+        
+        # Adiciona o ContratosManager ao layout de conteúdo
+        self.content_layout.addWidget(self.contratos_manager)

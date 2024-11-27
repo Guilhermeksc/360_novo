@@ -7,6 +7,114 @@ from PyQt6.QtSql import QSqlDatabase, QSqlTableModel, QSqlQuery
 from functools import partial
 import sqlite3  
 import re
+from src.config.paths import BASE_DIR, DATA_CONTRATOS_PATH
+from datetime import datetime
+
+def create_table_if_not_exists():
+    """Cria a tabela 'controle_contratos' com a estrutura definida, caso ainda não exista."""
+    print("Conectando ao banco de dados...")
+    try:
+        connection = sqlite3.connect(DATA_CONTRATOS_PATH)
+        cursor = connection.cursor()
+        print(f"Banco de dados conectado: {DATA_CONTRATOS_PATH}")
+
+        print("Verificando/criando a tabela 'controle_contratos'...")
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS controle_contratos (
+                status TEXT, 
+                dias INTEGER,
+                prorrogavel TEXT,
+                sigla_om TEXT,
+                contrato_numero TEXT,
+                tipo TEXT,
+                licitacao_numero TEXT,
+                nome_fornecedor TEXT,
+                objeto TEXT,
+                valor_global REAL,
+                id VARCHAR(100) PRIMARY KEY,                               
+                codigo_uasg TEXT,                 
+                nome_om TEXT, 
+                cnpj_cpf_idgener TEXT,
+                subtipo TEXT,                 
+                custeio TEXT, 
+                situacao TEXT, 
+                categoria TEXT, 
+                processo TEXT, 
+                amparo_legal TEXT, 
+                modalidade TEXT, 
+                data_assinatura TEXT, 
+                data_publicacao TEXT, 
+                vigencia_inicial TEXT,
+                vigencia_final TEXT 
+                                                         
+            )
+        ''')
+        print("Tabela 'controle_contratos' verificada/criada com sucesso.")
+
+        connection.commit()
+        print("Alterações no banco de dados foram salvas.")
+    except Exception as e:
+        print(f"Erro ao criar/verificar a tabela 'controle_contratos': {e}")
+    finally:
+        connection.close()
+        print("Conexão com o banco de dados encerrada.")
+
+
+def salvar_dados_no_sqlite(df, db_path):
+    """
+    Salva o DataFrame no banco de dados SQLite, atualizando registros existentes e inserindo novos registros.
+
+    :param df: pandas.DataFrame contendo os dados a serem salvos
+    :param db_path: Caminho para o banco de dados SQLite
+    """
+    try:
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+
+            # Verificar se a tabela existe e possui a coluna 'id' como PRIMARY KEY
+            cursor.execute("PRAGMA table_info(controle_contratos);")
+            columns_info = cursor.fetchall()
+            id_column_info = next((col for col in columns_info if col[1] == 'id'), None)
+
+            if id_column_info is None or id_column_info[5] != 1:  # Verificando se 'id' é PRIMARY KEY
+                raise ValueError("A tabela 'controle_contratos' não possui 'id' como PRIMARY KEY.")
+
+            # Definir as colunas necessárias para inserir ou atualizar
+            columns = [
+                'status', 'dias', 'id', 'licitacao_numero', 'contrato_numero', 'codigo_uasg', 'sigla_om',
+                'nome_om', 'cnpj_cpf_idgener', 'nome_fornecedor', 'tipo', 'subtipo', 'prorrogavel', 
+                'custeio', 'situacao', 'categoria', 'processo', 'objeto', 'amparo_legal', 
+                'modalidade', 'data_assinatura', 'data_publicacao', 'vigencia_inicial', 'vigencia_final', 'valor_global'
+            ]
+
+            for _, row in df.iterrows():
+                # Converter a linha em uma tupla com apenas as colunas necessárias
+                row_data = tuple(row[col] for col in columns)
+
+                # Verificar se o registro já existe
+                cursor.execute("SELECT COUNT(1) FROM controle_contratos WHERE id = ?", (row['id'],))
+                exists = cursor.fetchone()[0] > 0
+
+                if exists:
+                    # Se o registro existir, execute UPDATE
+                    update_query = f"""
+                    UPDATE controle_contratos SET
+                        {", ".join([f"{col} = ?" for col in columns if col != 'id'])}
+                    WHERE id = ?;
+                    """
+                    cursor.execute(update_query, row_data[1:] + (row['id'],))
+                else:
+                    # Se o registro não existir, execute INSERT
+                    insert_query = f"""
+                    INSERT INTO controle_contratos ({", ".join(columns)})
+                    VALUES ({", ".join(["?" for _ in columns])});
+                    """
+                    cursor.execute(insert_query, row_data)
+
+            conn.commit()
+            print("Dados salvos no banco de dados com sucesso!")
+    except Exception as e:
+        print(f"Erro ao salvar no banco de dados: {e}")
 
 class ContratosModel(QObject):
     def __init__(self, database_path, parent=None):
@@ -29,245 +137,69 @@ class ContratosModel(QObject):
             print("Conexão com o banco de dados aberta com sucesso.")
             self.adjust_table_structure()  # Ajusta a estrutura da tabela, se necessário
 
-    def save_api_data(self, data_api):
-        """Salva os dados da API no banco de dados com depuração aprimorada."""
-        
-        # Inspecionar `data_api`
-        print("DEBUG: Conteúdo de `data_api`:", data_api)
-        
-        # Acessa `data_informacoes` e converte para dicionário, se for uma lista de tuplas
-        data_informacoes = data_api['data_informacoes']
-        if isinstance(data_informacoes, list):
-            data_informacoes = dict(data_informacoes)
-
-        numero_controle_pncp = data_informacoes.get('numeroControlePNCP')
-        if not numero_controle_pncp:
-            print("Erro: 'numeroControlePNCP' não encontrado.")
-            return
-
-        # Remover caracteres especiais do nome da tabela
-        table_name = re.sub(r'[/-]', '_', numero_controle_pncp)
-        print(f"DEBUG: Nome da tabela convertido: {table_name}")
-
-        # SQL para criar a tabela com as colunas especificadas
-        create_table_sql = f"""
-            CREATE TABLE IF NOT EXISTS '{table_name}' (
-                numeroItem INTEGER PRIMARY KEY,
-                descricao TEXT,
-                materialOuServico TEXT,
-                valorUnitarioEstimado REAL,
-                valorTotal REAL,
-                valorUnitarioHomologado REAL,
-                valorTotalHomologado REAL,
-                quantidadeHomologada REAL,
-                unidadeMedida TEXT,
-                situacaoCompraItemNome TEXT,
-                dataAtualizacao TEXT,
-                niFornecedor TEXT,
-                nomeRazaoSocialFornecedor TEXT,
-                situacaoCompraItemResultadoNome TEXT
-            )
-        """
-        
-        # Criação da tabela, se não existir
-        with self.database_licitacao_manager as conn:
-            cursor = conn.cursor()
-            cursor.execute(create_table_sql)
-            conn.commit()
-            print(f"Tabela '{table_name}' criada ou já existe.")
-
-            # Inserir os dados de `resultados_completos` na tabela
-            insert_sql = f"""
-                INSERT OR REPLACE INTO '{table_name}' (
-                    numeroItem,
-                    descricao,
-                    materialOuServico,
-                    valorUnitarioEstimado,
-                    valorTotal,
-                    valorUnitarioHomologado,
-                    valorTotalHomologado,
-                    quantidadeHomologada,
-                    unidadeMedida,
-                    situacaoCompraItemNome,
-                    dataAtualizacao,
-                    niFornecedor,
-                    nomeRazaoSocialFornecedor,
-                    situacaoCompraItemResultadoNome
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
-            
-            # Depuração para verificar o SQL de inserção e os valores
-            print("DEBUG: SQL de inserção:", insert_sql)
-
-            for resultado in data_api['resultados_completos']:
-                # Preparando os valores para inserção
-                valores = (
-                    resultado.get("numeroItem"),
-                    resultado.get("descricao"),
-                    resultado.get("materialOuServico"),
-                    resultado.get("valorUnitarioEstimado"),
-                    resultado.get("valorTotal"),
-                    resultado.get("valorUnitarioHomologado"),
-                    resultado.get("valorTotalHomologado"),
-                    resultado.get("quantidadeHomologada"),
-                    resultado.get("unidadeMedida"),
-                    resultado.get("situacaoCompraItemNome"),
-                    resultado.get("dataAtualizacao"),
-                    resultado.get("niFornecedor"),
-                    resultado.get("nomeRazaoSocialFornecedor"),
-                    resultado.get("situacaoCompraItemResultadoNome")
-                )
-                
-                # Verificando o conteúdo dos valores antes de inserir
-                print(f"DEBUG: Inserindo valores na tabela '{table_name}': {valores}")
-                
-                # Inserir os valores na tabela
-                try:
-                    cursor.execute(insert_sql, valores)
-                except Exception as e:
-                    print(f"Erro ao inserir dados na tabela '{table_name}': {e}")
-            
-            conn.commit()
-        
-        print(f"Dados inseridos com sucesso na tabela '{table_name}'.")
-
     def adjust_table_structure(self):
-        """Verifica e cria a tabela 'controle_licitacao' se não existir."""
         query = QSqlQuery(self.db)
-        if not query.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='controle_licitacao'"):
+        if not query.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='controle_contratos'"):
             print("Erro ao verificar existência da tabela:", query.lastError().text())
         if not query.next():
-            print("Tabela 'controle_licitacao' não existe. Criando tabela...")
-            self.create_table_if_not_exists()
+            print("Tabela 'controle_contratos' não existe. Criando tabela... ContratosModel")
+            create_table_if_not_exists()
         else:
-            print("Tabela 'controle_licitacao' existe. Verificando estrutura da coluna...")
-
-    def save_api_data_to_database(self, data_api):
-        # Obtém o valor de 'numeroControlePNCP' para nome da tabela
-        numero_controle_pncp = data_api['data_informacoes'].get('numeroControlePNCP')
-        
-        if not numero_controle_pncp:
-            print("Erro: 'numeroControlePNCP' não encontrado nos dados da API.")
-            return
-
-        # Constrói a consulta de criação de tabela com o nome dinâmico
-        create_table_sql = f"""
-            CREATE TABLE IF NOT EXISTS '{numero_controle_pncp}' (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                valorTotalEstimado REAL,
-                valorTotalHomologado REAL,
-                orcamentoSigilosoCodigo INTEGER,
-                orcamentoSigilosoDescricao TEXT,
-                numeroControlePNCP TEXT,
-                linkSistemaOrigem TEXT,
-                anoCompra INTEGER,
-                sequencialCompra INTEGER,
-                numeroCompra TEXT,
-                processo TEXT
-                -- Adicione outras colunas conforme necessário
-            )
-        """
-
-        # Executa a criação da tabela
-        with self.database_licitacao_manager as conn:
-            cursor = conn.cursor()
-            cursor.execute(create_table_sql)
+            print("Tabela 'controle_contratos' existe. Verificando estrutura da coluna... ContratosModel")
+            query.exec("PRAGMA table_info(controle_contratos);")
+            columns = []
+            while query.next():
+                column_name = query.value(1)  # Coluna 1 contém o nome da coluna
+                column_type = query.value(2)  # Coluna 2 contém o tipo da coluna
+                columns.append((column_name, column_type))
             
-            # Insere os dados da API na tabela criada
-            insert_sql = f"""
-                INSERT INTO '{numero_controle_pncp}' (
-                    valorTotalEstimado,
-                    valorTotalHomologado,
-                    orcamentoSigilosoCodigo,
-                    orcamentoSigilosoDescricao,
-                    numeroControlePNCP,
-                    linkSistemaOrigem,
-                    anoCompra,
-                    sequencialCompra,
-                    numeroCompra,
-                    processo
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
-            
-            # Extrai valores de 'data_informacoes' para inserir na tabela
-            data_informacoes = data_api['data_informacoes']
-            valores = (
-                data_informacoes.get("valorTotalEstimado"),
-                data_informacoes.get("valorTotalHomologado"),
-                data_informacoes.get("orcamentoSigilosoCodigo"),
-                data_informacoes.get("orcamentoSigilosoDescricao"),
-                data_informacoes.get("numeroControlePNCP"),
-                data_informacoes.get("linkSistemaOrigem"),
-                data_informacoes.get("anoCompra"),
-                data_informacoes.get("sequencialCompra"),
-                data_informacoes.get("numeroCompra"),
-                data_informacoes.get("processo")
-            )
-            
-            cursor.execute(insert_sql, valores)
-            conn.commit()
-        
-        print(f"Tabela '{numero_controle_pncp}' criada e dados inseridos com sucesso.")
+            print("Estrutura atual da tabela 'controle_contratos':")
+            for column_name, column_type in columns:
+                print(f"Coluna: {column_name}, Tipo: {column_type}")
 
-    def create_table_if_not_exists(self):
-        """Cria a tabela 'controle_licitacao' com a estrutura definida, caso ainda não exista."""
-        query = QSqlQuery(self.db)
-        if not query.exec("""
-            CREATE TABLE IF NOT EXISTS controle_licitacao (
-                situacao TEXT,                         
-                id_processo VARCHAR(100) PRIMARY KEY,
-                tipo VARCHAR(100),
-                numero VARCHAR(100),
-                ano VARCHAR(100),
-                nup VARCHAR(100),
-                material_servico VARCHAR(30),
-                objeto VARCHAR(100),
-                vigencia TEXT,
-                data_sessao DATE,
-                operador text,
-                criterio_julgamento TEXT,
-                com_disputa TEXT,
-                pesquisa_preco TEXT,
-                previsao_contratacao TEXT,
-                uasg VARCHAR(10),
-                orgao_responsavel VARCHAR(250),
-                sigla_om VARCHAR(100),
-                setor_responsavel TEXT,
-                responsavel_pela_demanda TEXT,
-                ordenador_despesas TEXT,
-                agente_fiscal TEXT,
-                gerente_de_credito TEXT,
-                cp TEXT,
-                cod_par TEXT,
-                prioridade_par TEXT,
-                cep TEXT,
-                endereco TEXT,          
-                email TEXT,
-                telefone TEXT,
-                dias_para_recebimento TEXT,
-                horario_para_recebimento TEXT,
-                valor_total TEXT,
-                acao_interna TEXT,
-                fonte_recursos TEXT,
-                natureza_despesa TEXT,
-                unidade_orcamentaria TEXT,
-                ptres TEXT,
-                atividade_custeio TEXT,                          
-                comentarios TEXT,                          
-                justificativa TEXT,
-                cnpj_matriz TEXT,
-                sequencial_pncp TEXT,
-                link_pncp TEXT,
-                comunicacao_padronizada TEXT             
-            )
-        """):
-            print("Falha ao criar a tabela 'controle_licitacao':", query.lastError().text())
-        else:
-            print("Tabela 'controle_licitacao' criada com sucesso.")
+            # Exemplo de checagem de estrutura
+            required_columns = [
+                ("status", "TEXT"),
+                ("dias", "INTEGER"),
+                ("id", "VARCHAR(100)"),
+                ("licitacao_numero", "TEXT"),
+                ("contrato_numero", "TEXT"),
+                ("codigo_uasg", "TEXT"),
+                ("sigla_om", "TEXT"),
+                ("nome_om", "TEXT"),
+                ("cnpj_cpf_idgener", "TEXT"),
+                ("nome_fornecedor", "TEXT"),
+                ("tipo", "TEXT"),
+                ("subtipo", "TEXT"),
+                ("prorrogavel", "TEXT"),
+                ("custeio", "TEXT"),
+                ("situacao", "TEXT"),
+                ("categoria", "TEXT"),
+                ("processo", "TEXT"),
+                ("objeto", "TEXT"),
+                ("amparo_legal", "TEXT"),
+                ("modalidade", "TEXT"),
+                ("data_assinatura", "TEXT"),
+                ("data_publicacao", "TEXT"),
+                ("vigencia_inicial", "TEXT"),
+                ("vigencia_final", "TEXT"),
+                ("valor_global", "REAL")
+            ]
+
+            missing_columns = [
+                col for col, col_type in required_columns 
+                if col not in [c[0] for c in columns] or col_type not in [c[1] for c in columns if c[0] == col]
+            ]
+
+            if missing_columns:
+                print(f"As seguintes colunas estão ausentes ou têm tipos incompatíveis: {missing_columns}")
+            else:
+                print("Todas as colunas necessárias estão presentes e com tipos corretos.")
+
 
     def setup_model(self, table_name, editable=False):
         """Configura o modelo SQL para a tabela especificada."""
-        # Passa o database_licitacao_manager para o modelo personalizado
+        # Passa o database_contratos_manager para o modelo personalizado
         self.model = CustomSqlTableModel(parent=self, db=self.db, database_manager=self.database_contratos_manager, non_editable_columns=[4, 8, 10, 13])
         self.model.setTable(table_name)
         
@@ -279,196 +211,148 @@ class ContratosModel(QObject):
 
     def get_data(self, table_name):
         """Retorna todos os dados da tabela especificada."""
-        return self.database_licitacao_manager.fetch_all(f"SELECT * FROM {table_name}")
+        return self.database_contratos_manager.fetch_all(f"SELECT * FROM {table_name}")
         
     def insert_or_update_data(self, data):
         print("Dados recebidos para salvar:", data)
         upsert_sql = '''
-        INSERT INTO controle_licitacao (
-            situacao, 
-            id_processo, 
-            tipo, 
-            numero, 
-            ano, 
-            nup, 
-            material_servico, 
-            objeto,
-            vigencia,             
-            uasg, 
-            orgao_responsavel,
-            sigla_om,  
-            setor_responsavel, 
-            data_sessao, 
-            operador, 
-            criterio_julgamento, 
-            com_disputa, 
-            pesquisa_preco, 
-            atividade_custeio,
-            previsao_contratacao, 
-            responsavel_pela_demanda, 
-            ordenador_despesas, 
-            agente_fiscal, 
-            gerente_de_credito,
-            cp,
-            cod_par, 
-            prioridade_par,
-            justificativa, 
-            cep, 
-            endereco, 
-            email, 
-            telefone, 
-            dias_para_recebimento,
-            horario_para_recebimento, 
-            valor_total, 
-            acao_interna, 
-            fonte_recursos, 
-            natureza_despesa,
-            unidade_orcamentaria, 
-            ptres,
-            cnpj_matriz,
-            sequencial_pncp,
-            link_pncp,
-            comunicacao_padronizada
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id_processo) DO UPDATE SET
-            situacao=excluded.situacao,
-            tipo=excluded.tipo,
-            numero=excluded.numero,
-            ano=excluded.ano,
-            nup=excluded.nup,
-            material_servico=excluded.material_servico,
-            objeto=excluded.objeto,
-            vigencia=excluded.vigencia,
-            uasg=excluded.uasg,      
-            orgao_responsavel=excluded.orgao_responsavel,                  
-            sigla_om=excluded.sigla_om,
-            setor_responsavel=excluded.setor_responsavel,
-            data_sessao=excluded.data_sessao,
-            operador=excluded.operador,
-            criterio_julgamento=excluded.criterio_julgamento,
-            com_disputa=excluded.com_disputa,
-            pesquisa_preco=excluded.pesquisa_preco,
-            atividade_custeio=excluded.atividade_custeio,
-            previsao_contratacao=excluded.previsao_contratacao,
-            responsavel_pela_demanda=excluded.responsavel_pela_demanda, 
-            ordenador_despesas=excluded.ordenador_despesas, 
-            agente_fiscal=excluded.agente_fiscal, 
-            gerente_de_credito=excluded.gerente_de_credito,
-            cp=excluded.cp,
-            cod_par=excluded.cod_par, 
-            prioridade_par=excluded.prioridade_par, 
-            justificativa=excluded.justificativa,
-            cep=excluded.cep, 
-            endereco=excluded.endereco, 
-            email=excluded.email, 
-            telefone=excluded.telefone, 
-            dias_para_recebimento=excluded.dias_para_recebimento,
-            horario_para_recebimento=excluded.horario_para_recebimento, 
-            valor_total=excluded.valor_total, 
-            acao_interna=excluded.acao_interna, 
-            fonte_recursos=excluded.fonte_recursos, 
-            natureza_despesa=excluded.natureza_despesa,
-            unidade_orcamentaria=excluded.unidade_orcamentaria,
-            ptres=excluded.ptres,
-            cnpj_matriz=excluded.cnpj_matriz,
-            sequencial_pncp=excluded.sequencial_pncp,
-            link_pncp=excluded.link_pncp,
-            comunicacao_padronizada=excluded.comunicacao_padronizada
+        INSERT INTO controle_contratos (
+            status, dias, renova, sigla_om, contrato_numero, 
+            tipo, licitacao_numero, nome_fornecedor, objeto, 
+            valor_global, id, codigo_uasg, nome_om, cnpj_cpf_idgener, 
+            subtipo, prorrogavel, custeio, categoria, processo, 
+            amparo_legal, modalidade, data_assinatura, data_publicacao, 
+            vigencia_inicial, vigencia_final        
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            status = excluded.status, dias = excluded.dias, renova = excluded.renova, sigla_om = excluded.sigla_om, contrato_numero = excluded.contrato_numero,
+            tipo = excluded.tipo, licitacao_numero = excluded.licitacao_numero, nome_fornecedor = excluded.nome_fornecedor, objeto = excluded.objeto,
+            valor_global = excluded.valor_global, codigo_uasg = excluded.codigo_uasg, nome_om = excluded.nome_om, cnpj_cpf_idgener = excluded.cnpj_cpf_idgener,
+            subtipo = excluded.subtipo, prorrogavel = excluded.prorrogavel, custeio = excluded.custeio, categoria = excluded.categoria, processo = excluded.processo,
+            amparo_legal = excluded.amparo_legal, modalidade = excluded.modalidade, data_assinatura,
+            data_publicacao = excluded.data_publicacao, vigencia_inicial = excluded.vigencia_inicial, vigencia_final = excluded.vigencia_final
+
         '''
 
         # Verifica se 'situacao' está dentro dos valores válidos
         valid_situations = ["Planejamento", "Aprovado", "Sessão Pública", "Homologado", "Empenhado", "Concluído", "Arquivado"]
-        data['situacao'] = data.get('situacao', 'Planejamento')
-        if data['situacao'] not in valid_situations:
-            data['situacao'] = 'Planejamento'
+        data['status'] = data.get('status', 'Planejamento')
+        if data['status'] not in valid_situations:
+            data['status'] = 'Planejamento'
 
         # Executa a inserção ou atualização
         try:
-            with self.database_licitacao_manager as conn:
+            with self.database_contratos_manager as conn:
                 cursor = conn.cursor()
                 cursor.execute(upsert_sql, (
-                    data.get('situacao'), 
-                    data.get('id_processo'), 
-                    data.get('tipo'), 
-                    data.get('numero'), 
-                    data.get('ano'),
-                    data.get('nup'),
-                    data.get('material_servico'),                  
+                    data.get('status'), 
+                    data.get('dias'),
+                    data.get('renova'),
+                    data.get('sigla_om'),
+                    data.get('contrato_numero'),
+                    data.get('tipo'),
+                    data.get('licitacao_numero'),
+                    data.get('nome_fornecedor'),
                     data.get('objeto'),
-                    data.get('vigencia', '2 (dois) meses'),
-                    data.get('uasg'),
-                    data.get('orgao_responsavel'),
-                    data.get('sigla_om'), 
-                    data.get('setor_responsavel', ''), 
-                    data.get('data_sessao', ''),
-                    data.get('operador', ''),
-                    data.get('criterio_julgamento', ''), 
-                    data.get('com_disputa'),
-                    data.get('pesquisa_preco'), 
-                    data.get('atividade_custeio'),
-                    data.get('previsao_contratacao', ''),
-                    data.get('responsavel_pela_demanda', ''),
-                    data.get('ordenador_despesas', ''), 
-                    data.get('agente_fiscal', ''),
-                    data.get('gerente_de_credito', ''),
-                    data.get('cp', ''),
-                    data.get('cod_par', ''),
-                    data.get('prioridade_par', ''),
-                    data.get('justificativa', ''),
-                    data.get('cep', ''), 
-                    data.get('endereco', ''),
-                    data.get('email', ''),
-                    data.get('telefone', ''),
-                    data.get('dias_recebimento', ''),
-                    data.get('horario_recebimento', ''),
-                    data.get('valor_total', ''),
-                    data.get('acao_interna', ''),
-                    data.get('fonte_recursos', ''),
-                    data.get('natureza_despesa', ''), 
-                    data.get('unidade_orcamentaria', ''),
-                    data.get('ptres', ''),
-                    data.get('cnpj_matriz', '00394502000144'),
-                    data.get('sequencial_pncp', ''),
-                    data.get('link_pncp', ''),
-                    data.get('comunicacao_padronizada', '')
+                    data.get('valor_global'), data.get('id'), data.get('codigo_uasg'), data.get('nome_om'), data.get('cnpj_cpf_idgener'),
+                    data.get('subtipo'), data.get('prorrogavel'), data.get('custeio'), data.get('categoria'), data.get('processo'),
+                    data.get('objeto'), data.get('amparo_legal'), data.get('modalidade'), data.get('data_assinatura'), data.get('data_publicacao'),
+                    data.get('vigencia_inicial'), data.get('vigencia_final')                                                                           
                 ))
                 conn.commit()
 
         except sqlite3.OperationalError as e:
             if "no such table" in str(e):
-                QMessageBox.warning(None, "Erro", "A tabela 'controle_licitacao' não existe. Por favor, crie a tabela primeiro.")
+                QMessageBox.warning(None, "Erro", "A tabela 'controle_contratos' não existe. Por favor, crie a tabela primeiro.")
                 return
             else:
-                QMessageBox.warning(None, "Erro", f"Ocorreu um erro ao tentar salvar os dados: {str(e)}")
+                QMessageBox.warning(None, "Erro", f"Ocorreu um erro ao tentar salvar os dados: {str(e)}")    
 
 class CustomSqlTableModel(QSqlTableModel):
     def __init__(self, parent=None, db=None, database_manager=None, non_editable_columns=None):
         super().__init__(parent, db)
-        self.database_licitacao_manager = database_manager
+        self.database_contratos_manager = database_manager
         self.non_editable_columns = non_editable_columns if non_editable_columns is not None else []
         
         # Define os nomes das colunas
         self.column_names = [
-            "situacao", "id_processo", "tipo", "numero", "ano", "nup", "material_servico", 
-            "objeto", "vigencia", "data_sessao", "operador", "criterio_julgamento", 
-            "com_disputa", "pesquisa_preco", "previsao_contratacao", "uasg", 
-            "orgao_responsavel", "sigla_om", "setor_responsavel", "responsavel_pela_demanda", 
-            "ordenador_despesas", "agente_fiscal", "gerente_de_credito", "cp", "cod_par", 
-            "prioridade_par", "cep", "endereco", "email", "telefone", 
-            "dias_para_recebimento", "horario_para_recebimento", "valor_total", 
-            "acao_interna", "fonte_recursos", "natureza_despesa", "unidade_orcamentaria", 
-            "ptres", "atividade_custeio", "comentarios", "justificativa", "cnpj_matriz","sequencial_pncp", "link_pncp", 
-            "comunicacao_padronizada"
-        ]
+                'status', 'dias', 'id', 'licitacao_numero', 'contrato_numero', 
+                'codigo_uasg', 'sigla_om',  'nome_om', 'cnpj_cpf_idgener', 'nome_fornecedor', 
+                'tipo', 'subtipo', 'prorrogavel', 'custeio', 'situacao', 
+                'categoria', 'processo', 'objeto', 'amparo_legal', 'modalidade', 
+                'data_assinatura', 'data_publicacao', 'vigencia_inicial', 'vigencia_final', 'valor_global'
+            ]
 
     def flags(self, index):
         if index.column() in self.non_editable_columns:
             return super().flags(index) & ~Qt.ItemFlag.ItemIsEditable  # Remove a permissão de edição
         return super().flags(index)
 
-    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
-        # Verifica se a coluna deve ser não editável e ajusta o retorno para DisplayRole
-        if role == Qt.ItemDataRole.DisplayRole and index.column() in self.non_editable_columns:
-            return super().data(index, role)
+    def sort_by_column(self, column_index, order=Qt.SortOrder.AscendingOrder):
+        """Ordena o modelo SQL pela coluna especificada."""
+        print(f"Ordenando pela coluna {column_index} em ordem {'ascendente' if order == Qt.SortOrder.AscendingOrder else 'descendente'}")
+        self.setSort(column_index, order)
+        self.select()
 
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        # Coluna 'dias'
+        if index.column() == self.fieldIndex("dias"):
+            if role == Qt.ItemDataRole.DisplayRole:
+                # Obtém o índice e valor da coluna "vigencia_final"
+                vigencia_final_index = self.fieldIndex("vigencia_final")
+                vigencia_final = self.index(index.row(), vigencia_final_index).data()
+
+                if vigencia_final:
+                    try:
+                        # Tentativa de conversão para 'DD/MM/YYYY'
+                        vigencia_final_date = datetime.strptime(vigencia_final, '%d/%m/%Y')
+                    except ValueError:
+                        try:
+                            # Tentativa de conversão para 'YYYY-MM-DD'
+                            vigencia_final_date = datetime.strptime(vigencia_final, '%Y-%m-%d')
+                        except ValueError:
+                            return "Data Inválida"
+
+                    # Calcula os dias restantes
+                    hoje = datetime.today()
+                    dias = (vigencia_final_date - hoje).days
+                    return dias  # Retorna o contador de dias restantes ou vencidos
+                else:
+                    return "Sem Data"
+
+            elif role == Qt.ItemDataRole.ForegroundRole:
+                # Altera a cor do texto com base no valor de dias
+                value = self.data(index, Qt.ItemDataRole.DisplayRole)
+                if isinstance(value, int):  # Certifica-se de que o valor é numérico
+                    if value < 0:
+                        return QColor(200, 0, 0)  # Vermelho escuro para dias vencidos
+                    elif 0 <= value < 30:
+                        return QColor(255, 0, 0)  # Vermelho
+                    elif 30 <= value <= 90:
+                        return QColor(255, 165, 0)  # Laranja
+                    elif 91 <= value <= 159:
+                        return QColor(255, 255, 0)  # Amarelo
+                    else:
+                        return QColor(0, 128, 0)  # Verde escuro
+
+        # Coluna 'prorrogável'
+        if index.column() == self.fieldIndex("prorrogavel"):
+            value = super().data(index, Qt.ItemDataRole.DisplayRole)
+            if role == Qt.ItemDataRole.ForegroundRole:
+                if value == "Sim":
+                    return QColor("lightgreen")
+                elif value == "Não":
+                    return QColor("lightcoral")
+
+        if index.column() == self.fieldIndex("status"):
+            if role == Qt.ItemDataRole.ForegroundRole:
+                # Define a cor do texto com base no status
+                value = super().data(index, Qt.ItemDataRole.DisplayRole)
+                color_map = {
+                    'Seção de Contratos': QColor("green"),
+                    'Pendente': QColor("orange"),
+                    'Concluído': QColor("blue"),
+                    'Rejeitado': QColor("red"),
+                }
+                return color_map.get(value, None)  # Retorna None para usar a cor padrão
         return super().data(index, role)
