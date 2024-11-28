@@ -37,138 +37,138 @@ class DashboardWidget(QWidget):
         dash_icon_button.setFlat(True)
         title_layout.addWidget(dash_icon_button)
 
-        title_label = QLabel("Dashboard de Contratações")
+        title_label = QLabel("Dashboard de Contratações em construção")
         title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         title_layout.addWidget(title_label)
 
         main_layout.addLayout(title_layout)
 
-        # Cria o layout vertical para a seção de licitações
-        licitacao_layout = QVBoxLayout()
+        # # Cria o layout vertical para a seção de licitações
+        # licitacao_layout = QVBoxLayout()
 
-        licitacao_label = QLabel("Licitação")
-        licitacao_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
-        licitacao_layout.addWidget(licitacao_label)
+        # licitacao_label = QLabel("Licitação")
+        # licitacao_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        # licitacao_layout.addWidget(licitacao_label)
 
-        # Cria o layout horizontal para os gráficos
-        charts_layout = QHBoxLayout()
-        charts_layout.setSpacing(10)
-        charts_layout.setContentsMargins(0, 0, 0, 0)
+        # # Cria o layout horizontal para os gráficos
+        # charts_layout = QHBoxLayout()
+        # charts_layout.setSpacing(10)
+        # charts_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Gráfico com o tamanho máximo padrão de 400x300
-        material_servico_widget = self.create_pie_chart(
-            DATA_LICITACAO_PATH,
-            'material_servico',
-            'controle_licitacao',
-            'Distribuição de Material/Serviço'
-        )
+        # # Gráfico com o tamanho máximo padrão de 400x300
+        # material_servico_widget = self.create_pie_chart(
+        #     DATA_LICITACAO_PATH,
+        #     'material_servico',
+        #     'controle_licitacao',
+        #     'Distribuição de Material/Serviço'
+        # )
 
-        # Gráfico com tamanho máximo personalizado de 500x400
-        situacao_widget = self.create_pie_chart(
-            DATA_LICITACAO_PATH,
-            'situacao',
-            'controle_licitacao',
-            'Distribuição de Situação',
-            max_width=600,
-            max_height=300
-        )
-        # Adiciona os gráficos ao layout horizontal
-        charts_layout.addWidget(material_servico_widget)
-        charts_layout.addWidget(situacao_widget)
-        licitacao_layout.addLayout(charts_layout)
+        # # Gráfico com tamanho máximo personalizado de 500x400
+        # situacao_widget = self.create_pie_chart(
+        #     DATA_LICITACAO_PATH,
+        #     'situacao',
+        #     'controle_licitacao',
+        #     'Distribuição de Situação',
+        #     max_width=600,
+        #     max_height=300
+        # )
+        # # Adiciona os gráficos ao layout horizontal
+        # charts_layout.addWidget(material_servico_widget)
+        # charts_layout.addWidget(situacao_widget)
+        # licitacao_layout.addLayout(charts_layout)
 
-        # Adiciona o layout de licitação ao layout principal
-        main_layout.addLayout(licitacao_layout)
+        # # Adiciona o layout de licitação ao layout principal
+        # main_layout.addLayout(licitacao_layout)
 
-        linha_divisoria, spacer_baixo_linha = linha_divisoria_layout()
-        main_layout.addWidget(linha_divisoria)
-        main_layout.addSpacerItem(spacer_baixo_linha)
+        # linha_divisoria, spacer_baixo_linha = linha_divisoria_layout()
+        # main_layout.addWidget(linha_divisoria)
+        # main_layout.addSpacerItem(spacer_baixo_linha)
 
-        dispensa_layout = QVBoxLayout()
-        dispensa_label = QLabel("Dispensa Eletrônica")
-        dispensa_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
-        dispensa_layout.addWidget(dispensa_label)
+        # dispensa_layout = QVBoxLayout()
+        # dispensa_label = QLabel("Dispensa Eletrônica")
+        # dispensa_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        # dispensa_layout.addWidget(dispensa_label)
 
-        # Cria o layout horizontal para os gráficos
-        charts_dispensa_layout = QHBoxLayout()
-        charts_dispensa_layout.setSpacing(10)
-        charts_dispensa_layout.setContentsMargins(0, 0, 0, 0)
+        # # Cria o layout horizontal para os gráficos
+        # charts_dispensa_layout = QHBoxLayout()
+        # charts_dispensa_layout.setSpacing(10)
+        # charts_dispensa_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Gráfico com o tamanho máximo padrão de 400x300
-        material_servico_dispensa_widget = self.create_pie_chart(
-            DATA_DISPENSA_ELETRONICA_PATH,
-            'material_servico',
-            'controle_dispensas',
-            'Distribuição de Material/Serviço'
-        )
+        # # Gráfico com o tamanho máximo padrão de 400x300
+        # material_servico_dispensa_widget = self.create_pie_chart(
+        #     DATA_DISPENSA_ELETRONICA_PATH,
+        #     'material_servico',
+        #     'controle_dispensas',
+        #     'Distribuição de Material/Serviço'
+        # )
 
-        # Gráfico com tamanho máximo personalizado de 600x300
-        situacao_dispensa_widget = self.create_pie_chart(
-            DATA_DISPENSA_ELETRONICA_PATH,
-            'situacao',
-            'controle_dispensas',
-            'Distribuição de Situação',
-            max_width=600,
-            max_height=300
-        )
-        # Adiciona os gráficos ao layout horizontal
-        charts_dispensa_layout.addWidget(material_servico_dispensa_widget)
-        charts_dispensa_layout.addWidget(situacao_dispensa_widget)
-        dispensa_layout.addLayout(charts_dispensa_layout)
+        # # Gráfico com tamanho máximo personalizado de 600x300
+        # situacao_dispensa_widget = self.create_pie_chart(
+        #     DATA_DISPENSA_ELETRONICA_PATH,
+        #     'situacao',
+        #     'controle_dispensas',
+        #     'Distribuição de Situação',
+        #     max_width=600,
+        #     max_height=300
+        # )
+        # # Adiciona os gráficos ao layout horizontal
+        # charts_dispensa_layout.addWidget(material_servico_dispensa_widget)
+        # charts_dispensa_layout.addWidget(situacao_dispensa_widget)
+        # dispensa_layout.addLayout(charts_dispensa_layout)
 
-        # Adiciona o layout de dispensa ao layout principal
-        main_layout.addLayout(dispensa_layout)
+        # # Adiciona o layout de dispensa ao layout principal
+        # main_layout.addLayout(dispensa_layout)
 
-        linha_divisoria, spacer_baixo_linha = linha_divisoria_layout()
-        main_layout.addWidget(linha_divisoria)
-        main_layout.addSpacerItem(spacer_baixo_linha)
+        # linha_divisoria, spacer_baixo_linha = linha_divisoria_layout()
+        # main_layout.addWidget(linha_divisoria)
+        # main_layout.addSpacerItem(spacer_baixo_linha)
 
-        contratos_layout = QVBoxLayout()
-        contratos_label = QLabel("Contratos")
-        contratos_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
-        contratos_layout.addWidget(contratos_label)
+        # contratos_layout = QVBoxLayout()
+        # contratos_label = QLabel("Contratos")
+        # contratos_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        # contratos_layout.addWidget(contratos_label)
 
-        # Cria o layout horizontal para os gráficos
-        charts_contratos_layout = QHBoxLayout()
-        charts_contratos_layout.setSpacing(10)
-        charts_contratos_layout.setContentsMargins(0, 0, 0, 0)
+        # # Cria o layout horizontal para os gráficos
+        # charts_contratos_layout = QHBoxLayout()
+        # charts_contratos_layout.setSpacing(10)
+        # charts_contratos_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Gráfico com o tamanho máximo padrão de 400x300
-        material_servico_contratos_widget = self.create_pie_chart(
-            DATA_DISPENSA_ELETRONICA_PATH,
-            'material_servico',
-            'controle_dispensas',
-            'Distribuição de Material/Serviço'
-        )
+        # # Gráfico com o tamanho máximo padrão de 400x300
+        # material_servico_contratos_widget = self.create_pie_chart(
+        #     DATA_DISPENSA_ELETRONICA_PATH,
+        #     'material_servico',
+        #     'controle_dispensas',
+        #     'Distribuição de Material/Serviço'
+        # )
 
-        # Gráfico com tamanho máximo personalizado de 600x300
-        situacao_contratos_widget = self.create_pie_chart(
-            DATA_DISPENSA_ELETRONICA_PATH,
-            'situacao',
-            'controle_dispensas',
-            'Distribuição de Situação',
-            max_width=600,
-            max_height=300
-        )
-        # Adiciona os gráficos ao layout horizontal
-        charts_contratos_layout.addWidget(material_servico_contratos_widget)
-        charts_contratos_layout.addWidget(situacao_contratos_widget)
-        contratos_layout.addLayout(charts_contratos_layout)
+        # # Gráfico com tamanho máximo personalizado de 600x300
+        # situacao_contratos_widget = self.create_pie_chart(
+        #     DATA_DISPENSA_ELETRONICA_PATH,
+        #     'situacao',
+        #     'controle_dispensas',
+        #     'Distribuição de Situação',
+        #     max_width=600,
+        #     max_height=300
+        # )
+        # # Adiciona os gráficos ao layout horizontal
+        # charts_contratos_layout.addWidget(material_servico_contratos_widget)
+        # charts_contratos_layout.addWidget(situacao_contratos_widget)
+        # contratos_layout.addLayout(charts_contratos_layout)
 
-        # Adiciona o layout de dispensa ao layout principal
-        main_layout.addLayout(contratos_layout)
+        # # Adiciona o layout de dispensa ao layout principal
+        # main_layout.addLayout(contratos_layout)
 
-        # Adiciona um QScrollArea para rolagem
-        scroll_area = QScrollArea(self)
-        scroll_area.setWidget(central_widget)
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # Somente barra vertical
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        # # Adiciona um QScrollArea para rolagem
+        # scroll_area = QScrollArea(self)
+        # scroll_area.setWidget(central_widget)
+        # scroll_area.setWidgetResizable(True)
+        # scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # Somente barra vertical
+        # scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
-        # Define o layout do widget principal para incluir a barra de rolagem
-        layout_with_scroll = QVBoxLayout(self)
-        layout_with_scroll.addWidget(scroll_area)
-        self.setLayout(layout_with_scroll)
+        # # Define o layout do widget principal para incluir a barra de rolagem
+        # layout_with_scroll = QVBoxLayout(self)
+        # layout_with_scroll.addWidget(scroll_area)
+        # self.setLayout(layout_with_scroll)
 
     def create_pie_chart(self, db_path, column_name, table_name, chart_title, max_width=400, max_height=300):
         # Conecta ao banco de dados SQLite

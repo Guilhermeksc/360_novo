@@ -4,7 +4,7 @@ from src.modules.planejamento.dialogs.add_item import AddItemDialog
 from src.modules.planejamento.dialogs.salvar_tabela import DataManager
 from src.modules.planejamento.dialogs.graficos import GraficTableDialog
 from src.modules.planejamento.dialogs.gerar_tabela import TabelaResumidaManager
-from src.modules.contratos.widgets.edit_data import EditarDadosWindow
+from src.modules.contratos.widgets.edit_data import EditarDadosContratos
 from src.modules.planejamento.database_manager.db_manager import DatabaseManager
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
@@ -33,7 +33,7 @@ class ContratosController(QObject):
 
     def handle_edit_item(self, data):
         # Passa os valores para a instância de handle_edit_item
-        self.edit_data_dialog = EditarDadosWindow(
+        self.edit_data_dialog = EditarDadosContratos(
             data, self.icons, self.view
         )
         # Conecta o sinal para salvar os dados

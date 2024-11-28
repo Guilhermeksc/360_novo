@@ -670,7 +670,70 @@ class EditarDadosWindow(QMainWindow):
         objeto_completo_layout.addWidget(objeto_completo_label)
         objeto_completo_layout.addWidget(self.objeto_completo_edit)
         contratacao_layout.addLayout(objeto_completo_layout)
-        
+
+        checkbox_layout = QHBoxLayout()
+
+        # Ícone e checkbox para "Prioritário?"
+        prioridade_icon = QIcon(self.icons.get("prioridade", None))
+        image_label_esquerda = QLabel()
+        image_label_esquerda.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        image_label_esquerda.setPixmap(prioridade_icon.pixmap(40, 40))
+        checkbox_layout.addWidget(image_label_esquerda)
+
+        prioridade_label = QLabel("Prioritário?")
+        checkbox_layout.addWidget(prioridade_label)
+
+        prioridade_checkbox = QCheckBox()
+        prioridade_checkbox.setStyleSheet("""
+            QCheckBox::indicator {
+                width: 25px;
+                height: 25px;
+            }
+        """)  # Ajusta o tamanho do checkbox
+        checkbox_layout.addWidget(prioridade_checkbox)
+
+        # Ícone e checkbox para "Emenda Parlamentar?"
+        emenda_parlamentar_icon = QIcon(self.icons.get("reajuste", None))
+        image_label_centro = QLabel()
+        image_label_centro.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        image_label_centro.setPixmap(emenda_parlamentar_icon.pixmap(40, 40))
+        checkbox_layout.addWidget(image_label_centro)
+
+        emenda_parlamentar_label = QLabel("Emenda Parlamentar?")
+        checkbox_layout.addWidget(emenda_parlamentar_label)
+
+        emenda_parlamentar_checkbox = QCheckBox()
+        emenda_parlamentar_checkbox.setStyleSheet("""
+            QCheckBox::indicator {
+                width: 25px;
+                height: 25px;
+            }
+        """)  # Ajusta o tamanho do checkbox
+        checkbox_layout.addWidget(emenda_parlamentar_checkbox)
+
+        # Ícone e checkbox para "Sistema de Registro de Preços (SRP)?"
+        srp_icon = QIcon(self.icons.get("price-tag", None))
+        image_label_direita = QLabel()
+        image_label_direita.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        image_label_direita.setPixmap(srp_icon.pixmap(40, 40))
+        checkbox_layout.addWidget(image_label_direita)
+
+        srp_label = QLabel("Sistema de Registro de Preços (SRP)?")
+        checkbox_layout.addWidget(srp_label)
+
+        srp_checkbox = QCheckBox()
+        srp_checkbox.setStyleSheet("""
+            QCheckBox::indicator {
+                width: 25px;
+                height: 25px;
+            }
+        """)  # Ajusta o tamanho do checkbox
+        checkbox_layout.addWidget(srp_checkbox)
+
+        # Adiciona o layout ao layout principal
+        contratacao_layout.addLayout(checkbox_layout)
+
+
         spacer_item = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         contratacao_layout.addItem(spacer_item)
 

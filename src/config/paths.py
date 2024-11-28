@@ -77,6 +77,11 @@ def save_config(config):
     with open(CONFIG_FILE, 'w') as file:
         json.dump(config, file)
 
+def verificar_criar_json(arquivo_json):
+    if not arquivo_json.exists():
+        with open(arquivo_json, 'w', encoding='utf-8') as f:
+            json.dump({}, f, ensure_ascii=False, indent=4)
+            
 class ConfigManager(QObject):
     config_updated = pyqtSignal(str, Path)  # sinal emitido quando uma configuração é atualizada
 

@@ -17,9 +17,9 @@ class StatusContextMenu(QMenu):
         """Inicializa o menu de contexto com as opções fornecidas."""
         options = [
             "Prioritário",
-            "Pegou!",
+            "Vai garrar!",
             "Tá Safo!",
-            "Enviada",
+            "MSG Enviada",
             "Processo na AGU",
             "Nota Técnica",
             "Assinatura",
@@ -247,9 +247,9 @@ class CustomItemDelegate(QStyledItemDelegate):
                 'Assinatura': 'assinatura',
                 'Reajuste': 'economy',
                 'Prioritário': 'prioridade',
-                'Enviada': 'delivered',
+                'MSG Enviada': 'delivered',
                 'Tá Safo!': 'like',
-                'Pegou!': 'head_skull',
+                'Vai garrar!': 'head_skull',
                 'Nota Técnica': 'deal',
             }.get(status)
 
@@ -259,8 +259,8 @@ class CustomItemDelegate(QStyledItemDelegate):
             #     'Reajuste': QColor("white"),
             #     'Seção de Contratos': QColor("white"),
             #     'Prioritário': QColor("white"),
-            #     'Mensagem Enviada': QColor("white"),
-            #     'Pegou!': QColor("white"),
+            #     'Mensagem MSG Enviada': QColor("white"),
+            #     'Vai garrar!': QColor("white"),
             #     'Tá Safo!': QColor("white"),
             # }
             # text_color = color_map.get(status, option.palette.color(QPalette.ColorRole.Text))

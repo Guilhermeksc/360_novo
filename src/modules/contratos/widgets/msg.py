@@ -6,6 +6,7 @@ from PyQt6.QtCore import *
 from src.config.paths import MSG_LICITACAO_JSON
 from src.modules.utils.add_button import add_button_func
 import re
+
 class EditableTextField(QTextEdit):
     text_changed_signal = pyqtSignal(str)  # Sinal personalizado para enviar texto atualizado
 
@@ -17,7 +18,7 @@ class EditableTextField(QTextEdit):
         # Emite o sinal com o texto atualizado
         self.text_changed_signal.emit(self.toPlainText())
 
-class MensagensManager(QWidget):
+class MensagensManagerContratos(QWidget):
     def __init__(self, icons, dados):
         super().__init__()
         self.icons = icons
@@ -25,7 +26,7 @@ class MensagensManager(QWidget):
         self.current_button_name = None  # Nome do botão selecionado
         self.init_ui()
         self.load_buttons_from_json()
-    
+        
     def init_ui(self):
         # Layout principal
         self.main_layout = QHBoxLayout(self)  # Define diretamente como o layout do widget
@@ -58,27 +59,25 @@ class MensagensManager(QWidget):
         # Botão de copiar para área de transferência
         add_button_func("Copiar Conteúdo", "copy", self.copy_to_clipboard, self.titulo_layout, self.icons, tooltip="Copiar o texto padronizado para a área de transferência")
 
-        # Adiciona o layout de botões ao layout de conteúdo
         self.msg_content_layout.addLayout(self.titulo_layout)
 
-        # Sub-layout para os dois campos de texto
+        # Layout para campos de texto
         self.text_fields_layout = QHBoxLayout()
-
-        # Campo de edição do texto
+        
+        # Campo de edição de texto
         self.edit_text_field = EditableTextField()
         self.edit_text_field.setPlaceholderText("Edite o texto da mensagem aqui...")
         self.edit_text_field.text_changed_signal.connect(self.save_message_to_json)
         self.text_fields_layout.addWidget(self.edit_text_field)
 
-        # Campo para texto padronizado
+        # Campo de texto padronizado
         self.standard_text_field = QTextEdit()
         self.standard_text_field.setReadOnly(True)
         self.standard_text_field.setPlaceholderText("Texto padronizado da mensagem...")
         self.text_fields_layout.addWidget(self.standard_text_field)
 
-        # Adiciona o sub-layout ao layout de conteúdo
         self.msg_content_layout.addLayout(self.text_fields_layout)
-
+        
     def open_variables_dialog(self):
         """Abre um diálogo com as variáveis de self.dados e insere a escolhida no campo de edição."""
         dialog = QDialog(self)
